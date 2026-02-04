@@ -1,0 +1,43 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw data loaded from MinIO Bronze layer Parquet files
+    schema: raw
+    tables:
+      - name: transactions
+        description: Raw transaction data ingested from CSV/JSON files
+        columns:
+          - name: transaction_id
+            description: Unique identifier for each transaction
+          - name: customer_id
+            description: Identifier of the customer who made the transaction
+          - name: product_id
+            description: Identifier of the purchased product
+          - name: amount
+            description: Transaction amount in the given currency
+          - name: currency
+            description: Currency code (e.g., USD, EUR, GBP)
+          - name: quantity
+            description: Number of units purchased
+          - name: timestamp
+            description: Timestamp when the transaction occurred
+        freshness:
+          warn_after:
+            count: 24
+            period: hour
+          error_after:
+            count: 48
+            period: hour
+        loaded_at_field: "timestamp::timestamp"
+
+  - name: data_platform
+    description: Data platform metadata and tracking tables
+    schema: data_platform
+    tables:
+      - name: ingestion_metadata
+        description: Tracks every ingestion run with status, row counts, checksums
+      - name: watermarks
+        description: Stores incremental load state per source and column
+      - name: schema_history
+        description: Logs schema changes over time for auditing

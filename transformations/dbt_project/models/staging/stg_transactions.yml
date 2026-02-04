@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: >
+      Cleaned and standardized transaction data from the Bronze layer.
+      Filters out invalid records (null transaction_id, non-positive amounts/quantities),
+      standardizes currency codes to uppercase, and casts columns to proper types.
+    columns:
+      - name: transaction_id
+        description: Unique identifier for each transaction
+        tests:
+          - unique
+          - not_null
+
+      - name: customer_id
+        description: Identifier of the customer who made the transaction
+        tests:
+          - not_null
+
+      - name: product_id
+        description: Identifier of the purchased product
+        tests:
+          - not_null
+
+      - name: amount
+        description: Transaction amount in the given currency (must be positive)
+        tests:
+          - not_null
+          - positive_values
+
+      - name: currency
+        description: Standardized ISO currency code (uppercase)
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['USD', 'EUR', 'GBP']
+
+      - name: quantity
+        description: Number of units purchased (must be positive)
+        tests:
+          - not_null
+          - positive_values
+
+      - name: transaction_timestamp
+        description: Timestamp when the transaction occurred, cast to proper TIMESTAMP type
+        tests:
+          - not_null
+
+      - name: _loaded_at
+        description: Timestamp when this record was loaded into the staging layer

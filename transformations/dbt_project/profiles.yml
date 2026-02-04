@@ -1,0 +1,21 @@
+data_platform:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'postgres') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER', 'airflow') }}"
+      pass: "{{ env_var('POSTGRES_PASSWORD', 'airflow') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'airflow') }}"
+      schema: dbt_dev
+      threads: 4
+    prod:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'postgres') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_USER', 'airflow') }}"
+      pass: "{{ env_var('POSTGRES_PASSWORD', 'airflow') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'airflow') }}"
+      schema: dbt_prod
+      threads: 4

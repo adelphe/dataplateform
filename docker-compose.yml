@@ -34,6 +34,8 @@ x-airflow-common: &airflow-common
     - ./pipelines/utils:/opt/airflow/utils
     - ./pipelines/config:/opt/airflow/config
     - ./pipelines/ingestion:/opt/airflow/ingestion
+    - ./pipelines/loaders:/opt/airflow/loaders
+    - ./transformations:/opt/airflow/transformations
     - ./scripts:/opt/airflow/scripts
   depends_on:
     postgres:
@@ -51,6 +53,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init_ingestion_tables.sql:/docker-entrypoint-initdb.d/01_init_ingestion_tables.sql
+      - ./infrastructure/postgres/init_dbt_schemas.sql:/docker-entrypoint-initdb.d/02_init_dbt_schemas.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow}"]
       interval: 10s
@@ -116,6 +120,8 @@ services:
       - ./pipelines/utils:/opt/airflow/utils
       - ./pipelines/config:/opt/airflow/config
       - ./pipelines/ingestion:/opt/airflow/ingestion
+      - ./pipelines/loaders:/opt/airflow/loaders
+      - ./transformations:/opt/airflow/transformations
       - ./infrastructure/airflow/init-connections.sh:/opt/airflow/scripts/init-connections.sh
       - ./scripts:/opt/airflow/scripts/data
     depends_on:
