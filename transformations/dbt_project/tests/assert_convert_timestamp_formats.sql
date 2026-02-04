@@ -34,9 +34,9 @@ expected as (
 select *
 from test_cases, expected
 where
-    from_epoch_int      != expected_ts
-    or from_epoch_string   != expected_ts
-    or from_iso8601_z      != expected_ts
-    or from_iso8601_space  != expected_ts
-    or from_timestamp      != expected_ts
-    or from_epoch_float    != expected_ts
+    from_epoch_int      IS DISTINCT FROM expected_ts
+    or from_epoch_string   IS DISTINCT FROM expected_ts
+    or from_iso8601_z      IS DISTINCT FROM expected_ts
+    or from_iso8601_space  IS DISTINCT FROM expected_ts
+    or from_timestamp      IS DISTINCT FROM expected_ts
+    or from_epoch_float    IS DISTINCT FROM expected_ts

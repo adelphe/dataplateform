@@ -37,4 +37,4 @@ seeds:
 
 tests:
   data_platform:
-    +severity: warn
+    +severity: error
