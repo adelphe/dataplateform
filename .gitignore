@@ -1,0 +1,48 @@
+# Environment
+.env
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Airflow
+pipelines/logs/
+*.pid
+
+# dbt
+transformations/target/
+transformations/dbt_packages/
+transformations/logs/
+
+# Data files
+*.csv
+*.parquet
+*.avro
+!**/tests/fixtures/**
+
+# Secrets
+*.pem
+*.key
+credentials.json

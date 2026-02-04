@@ -1,6 +1,69 @@
 # Data Platform
 
-A step-by-step guide to building a modern data platform.
+A modern data platform monorepo with orchestration, transformations, data quality, and infrastructure as code.
+
+## Project Structure
+
+```
+.
+├── infrastructure/      # IaC (Terraform, Pulumi) and environment configs
+├── pipelines/           # Airflow DAGs, plugins, and pipeline logic
+│   ├── dags/
+│   ├── plugins/
+│   └── logs/
+├── transformations/     # dbt models and macros
+├── data-quality/        # Data validation and quality checks
+├── docs/                # Project documentation
+├── docker-compose.yml   # Local development services
+├── Makefile             # Common commands
+└── .env.example         # Environment variable template
+```
+
+## Local Services
+
+| Service            | URL                          | Default Credentials |
+|--------------------|------------------------------|---------------------|
+| Airflow Webserver  | http://localhost:8080         | admin / admin       |
+| Superset           | http://localhost:8088         | admin / admin       |
+| MinIO Console      | http://localhost:9001         | minio / minio123    |
+| MinIO API          | http://localhost:9000         | -                   |
+| PostgreSQL         | localhost:5432                | airflow / airflow   |
+
+## Getting Started
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Make
+- Python 3.10+ (for local development)
+
+### Setup
+
+```bash
+# 1. Clone the repository
+git clone <repo-url> && cd dataplateform
+
+# 2. Run initial setup (creates .env from .env.example, sets up directories)
+make setup
+
+# 3. Start all services
+make start
+
+# 4. Check service status
+make status
+```
+
+### Common Commands
+
+```bash
+make help      # Show all available commands
+make start     # Start all services
+make stop      # Stop all services
+make restart   # Restart all services
+make test      # Run all tests
+make logs      # Tail logs from all services
+make clean     # Stop services and remove volumes
+```
 
 ## Steps
 
