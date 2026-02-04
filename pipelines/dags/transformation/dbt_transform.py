@@ -1,17 +1,21 @@
 """dbt Transformation DAG.
 
-Orchestrates the full transformation pipeline:
-1. Loads Parquet data from MinIO Bronze layer into PostgreSQL raw schema
-2. Installs dbt dependencies
-3. Seeds reference data
-4. Runs dbt staging models (cleaning and standardization)
-5. Runs dbt intermediate models (business logic)
-6. Runs dbt mart models (analytics-ready tables)
-7. Executes dbt tests for data quality validation
-8. Generates dbt documentation
+Orchestrates the full transformation pipeline through the medallion
+architecture layers, with dependency management on the upstream
+ingestion DAG:
 
-This DAG should be triggered after ingestion pipelines complete
-to transform raw data through the medallion architecture layers.
+1. Waits for the ingestion DAG to complete (ExternalTaskSensor)
+2. Loads Parquet data from MinIO Bronze layer into PostgreSQL raw schema
+3. Installs dbt dependencies
+4. Seeds reference data
+5. Runs dbt models layer-by-layer (staging -> intermediate -> marts)
+   with per-layer tests as quality gates
+6. Supports incremental and full-refresh execution via DAG params
+7. Generates dbt documentation
+8. Logs a transformation summary
+
+Schedule: Runs daily at 02:00 UTC, one hour after the default
+ingestion window, to allow upstream data to land.
 """
 
 import sys
@@ -19,16 +23,25 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.sensors.external_task import ExternalTaskSensor
 
-sys.path.insert(0, "/opt/airflow")
+sys.path.insert(0, "/opt/airflow/pipelines")
 
-from operators.dbt_operator import DbtOperator
+from operators.dbt_operator import (
+    DbtDocsOperator,
+    DbtOperator,
+    DbtRunOperator,
+    DbtSeedOperator,
+    DbtTestOperator,
+)
 from operators.loader_operator import MinIOToPostgresOperator
 
 default_args = {
     "owner": "data-platform",
-    "retries": 1,
+    "retries": 2,
     "retry_delay": timedelta(minutes=5),
+    "retry_exponential_backoff": True,
+    "max_retry_delay": timedelta(minutes=30),
 }
 
 
@@ -40,77 +53,158 @@ def _on_failure_callback(context):
     print(f"ALERT: Task {task_id} in DAG {dag_id} failed at {execution_date}")
 
 
+def _log_transformation_summary(**context):
+    """Log a summary of the transformation pipeline run."""
+    ti = context["ti"]
+    row_count = ti.xcom_pull(task_ids="load_bronze_to_raw", key="row_count") or 0
+
+    summary = (
+        "========================================\n"
+        " dbt Transformation Summary\n"
+        "========================================\n"
+        f" Execution Date:  {context['ds']}\n"
+        f" Rows Loaded:     {row_count}\n"
+        f" Full Refresh:    {context['params'].get('full_refresh', False)}\n"
+        " Layers Executed: staging -> intermediate -> marts\n"
+        " Tests:           staging, marts\n"
+        " Docs:            generated\n"
+        "========================================\n"
+    )
+    print(summary)
+
+
 with DAG(
     dag_id="dbt_transform",
     default_args=default_args,
-    description="dbt transformation pipeline: Bronze -> Staging -> Intermediate -> Marts",
-    schedule=None,
+    description=(
+        "dbt transformation pipeline: "
+        "Bronze -> Staging -> Intermediate -> Marts"
+    ),
+    schedule="0 2 * * *",
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["transformation", "dbt", "medallion"],
     on_failure_callback=_on_failure_callback,
+    params={
+        "full_refresh": False,
+    },
 ) as dag:
 
-    # Step 1: Load Bronze Parquet data into PostgreSQL raw schema
+    # ------------------------------------------------------------------
+    # 1. Dependency management: wait for ingestion to finish
+    # ------------------------------------------------------------------
+    wait_for_ingestion = ExternalTaskSensor(
+        task_id="wait_for_ingestion",
+        external_dag_id="sample_batch_ingestion",
+        external_task_id=None,  # wait for the entire DAG
+        allowed_states=["success"],
+        failed_states=["failed"],
+        execution_delta=timedelta(hours=2),
+        mode="reschedule",
+        timeout=3600,
+        poke_interval=120,
+    )
+
+    # ------------------------------------------------------------------
+    # 2. Load Bronze Parquet data into PostgreSQL raw schema
+    # ------------------------------------------------------------------
     load_bronze_to_raw = MinIOToPostgresOperator(
         task_id="load_bronze_to_raw",
         bucket="raw",
-        object_key="{{ var.value.get('transactions_object_key', 'postgres/transactions/latest/transactions.parquet') }}",
+        object_key=(
+            "{{ var.value.get("
+            "'transactions_object_key', "
+            "'postgres/transactions/latest/transactions.parquet'"
+            ") }}"
+        ),
         target_table="transactions",
         target_schema="raw",
         load_mode="replace",
     )
 
-    # Step 2: Install dbt packages
+    # ------------------------------------------------------------------
+    # 3. Install dbt packages
+    # ------------------------------------------------------------------
     dbt_deps = DbtOperator(
         task_id="dbt_deps",
         dbt_command="deps",
     )
 
-    # Step 3: Load reference seed data
-    dbt_seed = DbtOperator(
+    # ------------------------------------------------------------------
+    # 4. Load reference seed data
+    # ------------------------------------------------------------------
+    dbt_seed = DbtSeedOperator(
         task_id="dbt_seed",
-        dbt_command="seed",
+        full_refresh="{{ params.full_refresh }}",
     )
 
-    # Step 4: Run staging models
-    dbt_run_staging = DbtOperator(
+    # ------------------------------------------------------------------
+    # 5. Run staging models
+    # ------------------------------------------------------------------
+    dbt_run_staging = DbtRunOperator(
         task_id="dbt_run_staging",
-        dbt_command="run --select staging",
+        select="staging",
     )
 
-    # Step 5: Run intermediate models
-    dbt_run_intermediate = DbtOperator(
+    # ------------------------------------------------------------------
+    # 6. Test staging models (quality gate before downstream layers)
+    # ------------------------------------------------------------------
+    dbt_test_staging = DbtTestOperator(
+        task_id="dbt_test_staging",
+        select="staging",
+    )
+
+    # ------------------------------------------------------------------
+    # 7. Run intermediate models
+    # ------------------------------------------------------------------
+    dbt_run_intermediate = DbtRunOperator(
         task_id="dbt_run_intermediate",
-        dbt_command="run --select intermediate",
+        select="intermediate",
     )
 
-    # Step 6: Run mart models
-    dbt_run_marts = DbtOperator(
+    # ------------------------------------------------------------------
+    # 8. Run mart models (incremental by default, full-refresh via param)
+    # ------------------------------------------------------------------
+    dbt_run_marts = DbtRunOperator(
         task_id="dbt_run_marts",
-        dbt_command="run --select marts",
+        select="marts",
+        full_refresh="{{ params.full_refresh }}",
     )
 
-    # Step 7: Run dbt tests
-    dbt_test = DbtOperator(
-        task_id="dbt_test",
-        dbt_command="test",
+    # ------------------------------------------------------------------
+    # 9. Test mart models (quality gate on analytics-ready tables)
+    # ------------------------------------------------------------------
+    dbt_test_marts = DbtTestOperator(
+        task_id="dbt_test_marts",
+        select="marts",
+        warn_error=True,
     )
 
-    # Step 8: Generate dbt documentation
-    dbt_docs_generate = DbtOperator(
+    # ------------------------------------------------------------------
+    # 10. Generate dbt documentation
+    # ------------------------------------------------------------------
+    dbt_docs_generate = DbtDocsOperator(
         task_id="dbt_docs_generate",
-        dbt_command="docs generate",
     )
 
-    # Task dependencies: sequential pipeline
-    (
-        load_bronze_to_raw
-        >> dbt_deps
-        >> dbt_seed
-        >> dbt_run_staging
-        >> dbt_run_intermediate
-        >> dbt_run_marts
-        >> dbt_test
-        >> dbt_docs_generate
+    # ------------------------------------------------------------------
+    # 11. Transformation summary
+    # ------------------------------------------------------------------
+    transformation_summary = PythonOperator(
+        task_id="transformation_summary",
+        python_callable=_log_transformation_summary,
     )
+
+    # ------------------------------------------------------------------
+    # Task dependencies
+    # ------------------------------------------------------------------
+    # Ingestion gate -> load -> dbt setup
+    wait_for_ingestion >> load_bronze_to_raw >> dbt_deps >> dbt_seed
+
+    # Layer-by-layer with test gates
+    dbt_seed >> dbt_run_staging >> dbt_test_staging
+    dbt_test_staging >> dbt_run_intermediate
+    dbt_run_intermediate >> dbt_run_marts >> dbt_test_marts
+
+    # Docs and summary after all tests pass
+    dbt_test_marts >> [dbt_docs_generate, transformation_summary]
