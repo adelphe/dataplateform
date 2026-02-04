@@ -18,13 +18,16 @@ class MinIOConfig:
     secret_key: str = ""
     region: str = "us-east-1"
     raw_bucket: str = "raw"
-    processed_bucket: str = "processed"
+    staging_bucket: str = "staging"
     curated_bucket: str = "curated"
 
     def __post_init__(self):
         self.endpoint_url = self.endpoint_url or os.environ.get("AWS_ENDPOINT_URL", "http://minio:9000")
         self.access_key = self.access_key or os.environ.get("AWS_ACCESS_KEY_ID", "minio")
         self.secret_key = self.secret_key or os.environ.get("AWS_SECRET_ACCESS_KEY", "minio123")
+        self.raw_bucket = self.raw_bucket or os.environ.get("MINIO_BRONZE_BUCKET", "raw")
+        self.staging_bucket = self.staging_bucket or os.environ.get("MINIO_SILVER_BUCKET", "staging")
+        self.curated_bucket = self.curated_bucket or os.environ.get("MINIO_GOLD_BUCKET", "curated")
 
 
 @dataclass

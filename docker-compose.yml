@@ -2,8 +2,8 @@ version: "3.8"
 
 x-airflow-common: &airflow-common
   build:
-    context: ./infrastructure/airflow
-    dockerfile: Dockerfile
+    context: .
+    dockerfile: infrastructure/airflow/Dockerfile
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-airflow}:${POSTGRES_PASSWORD:-airflow}@postgres:5432/${AIRFLOW_DB:-airflow}
