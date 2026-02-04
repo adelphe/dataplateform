@@ -1,20 +1,38 @@
 version: "3.8"
 
 x-airflow-common: &airflow-common
-  image: apache/airflow:2.9.3
+  build:
+    context: ./infrastructure/airflow
+    dockerfile: Dockerfile
   environment:
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-airflow}:${POSTGRES_PASSWORD:-airflow}@postgres:5432/${AIRFLOW_DB:-airflow}
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:-}
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY:-change-me-in-production}
+    AIRFLOW__LOGGING__LOGGING_LEVEL: ${AIRFLOW__LOGGING__LOGGING_LEVEL:-INFO}
+    AIRFLOW__LOGGING__COLORED_CONSOLE_LOG: "False"
+    AIRFLOW__METRICS__STATSD_ON: "False"
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: ${AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL:-60}
+    AIRFLOW__CORE__PARALLELISM: ${AIRFLOW__CORE__PARALLELISM:-32}
+    AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: ${AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG:-3}
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: ${AIRFLOW__WEBSERVER__EXPOSE_CONFIG:-True}
+    AIRFLOW__WEBSERVER__RBAC: "True"
     AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minio}
     AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minio123}
     AWS_ENDPOINT_URL: http://minio:9000
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    POSTGRES_USER: ${POSTGRES_USER:-airflow}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+    POSTGRES_DB: ${POSTGRES_DB:-airflow}
   volumes:
     - ./pipelines/dags:/opt/airflow/dags
     - ./pipelines/plugins:/opt/airflow/plugins
     - ./pipelines/logs:/opt/airflow/logs
+    - ./pipelines/operators:/opt/airflow/operators
+    - ./pipelines/utils:/opt/airflow/utils
+    - ./pipelines/config:/opt/airflow/config
   depends_on:
     postgres:
       condition: service_healthy
@@ -70,6 +88,15 @@ services:
           --lastname User \
           --role Admin \
           --email admin@example.com || true
+        bash /opt/airflow/scripts/init-connections.sh
+    volumes:
+      - ./pipelines/dags:/opt/airflow/dags
+      - ./pipelines/plugins:/opt/airflow/plugins
+      - ./pipelines/logs:/opt/airflow/logs
+      - ./pipelines/operators:/opt/airflow/operators
+      - ./pipelines/utils:/opt/airflow/utils
+      - ./pipelines/config:/opt/airflow/config
+      - ./infrastructure/airflow/init-connections.sh:/opt/airflow/scripts/init-connections.sh
     restart: "no"
 
   airflow-webserver:

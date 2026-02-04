@@ -1,0 +1,50 @@
+# Airflow connection configurations for the data platform.
+#
+# These connections are created automatically by infrastructure/airflow/init-connections.sh
+# during the airflow-init service startup.
+#
+# To add a new connection:
+#   1. Add the connection definition below
+#   2. Add the corresponding `airflow connections add` command to init-connections.sh
+#   3. Set any required environment variables in .env and .env.example
+
+connections:
+  postgres_default:
+    type: postgres
+    description: "Primary PostgreSQL database for data storage and Airflow metadata"
+    host: postgres
+    port: 5432
+    environment_variables:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+
+  minio_default:
+    type: aws
+    description: "MinIO S3-compatible object storage for data lake"
+    endpoint_url: http://minio:9000
+    environment_variables:
+      - MINIO_ROOT_USER
+      - MINIO_ROOT_PASSWORD
+
+# Example: Adding a new connection
+#
+#   my_api_connection:
+#     type: http
+#     description: "External API for data ingestion"
+#     host: https://api.example.com
+#     environment_variables:
+#       - MY_API_KEY
+#       - MY_API_SECRET
+#
+# Then add to init-connections.sh:
+#
+#   if airflow connections get my_api_connection >/dev/null 2>&1; then
+#       echo "Connection 'my_api_connection' already exists, skipping"
+#   else
+#       airflow connections add my_api_connection \
+#           --conn-type http \
+#           --conn-host "https://api.example.com" \
+#           --conn-login "${MY_API_KEY}" \
+#           --conn-password "${MY_API_SECRET}"
+#   fi

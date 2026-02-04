@@ -6,17 +6,28 @@ A modern data platform monorepo with orchestration, transformations, data qualit
 
 ```
 .
-├── infrastructure/      # IaC (Terraform, Pulumi) and environment configs
-├── pipelines/           # Airflow DAGs, plugins, and pipeline logic
+├── infrastructure/          # IaC and environment configs
+│   └── airflow/             # Custom Airflow Docker image
+│       ├── Dockerfile
+│       ├── requirements.txt
+│       ├── init-connections.sh
+│       └── airflow.cfg
+├── pipelines/               # Airflow DAGs, operators, and pipeline logic
+│   ├── __init__.py
 │   ├── dags/
+│   │   └── examples/       # Example DAG patterns
+│   ├── operators/           # Custom Airflow operators
+│   ├── utils/               # Shared utility functions
+│   ├── config/              # Pipeline configuration
+│   ├── tests/               # Unit and integration tests
 │   ├── plugins/
 │   └── logs/
-├── transformations/     # dbt models and macros
-├── data-quality/        # Data validation and quality checks
-├── docs/                # Project documentation
-├── docker-compose.yml   # Local development services
-├── Makefile             # Common commands
-└── .env.example         # Environment variable template
+├── transformations/         # dbt models and macros
+├── data-quality/            # Data validation and quality checks
+├── docs/                    # Project documentation
+├── docker-compose.yml       # Local development services
+├── Makefile                 # Common commands
+└── .env.example             # Environment variable template
 ```
 
 ## Local Services
@@ -56,14 +67,67 @@ make status
 ### Common Commands
 
 ```bash
-make help      # Show all available commands
-make start     # Start all services
-make stop      # Stop all services
-make restart   # Restart all services
-make test      # Run all tests
-make logs      # Tail logs from all services
-make clean     # Stop services and remove volumes
+make help                # Show all available commands
+make start               # Start all services
+make stop                # Stop all services
+make restart             # Restart all services
+make test                # Run all tests
+make logs                # Tail logs from all services
+make clean               # Stop services and remove volumes
 ```
+
+### Airflow Commands
+
+```bash
+make airflow-cli CMD="dags list"                  # Run Airflow CLI commands
+make airflow-logs                                  # Tail Airflow logs
+make airflow-test-dag DAG=example_hello_world      # Test a specific DAG
+make airflow-connections                           # List configured connections
+make airflow-reset                                 # Reset Airflow DB (dev only)
+```
+
+## Airflow Orchestration
+
+The platform uses Apache Airflow (LocalExecutor) for workflow orchestration with a custom Docker image that includes additional Python packages for data operations.
+
+### Custom Operators
+
+| Operator | Description |
+|----------|-------------|
+| `MinIOUploadOperator` | Upload files to MinIO (S3-compatible) buckets |
+| `PostgresTableSensorOperator` | Wait for a PostgreSQL table to exist with optional row count |
+| `DataQualityCheckOperator` | Run SQL-based data quality validations |
+| `MinIOFileSensorOperator` | Wait for files to appear in MinIO buckets |
+
+### Example DAGs
+
+| DAG | Description | Schedule |
+|-----|-------------|----------|
+| `example_hello_world` | Basic Airflow concepts | Manual |
+| `example_postgres_to_minio` | Extract from PostgreSQL to MinIO | Daily |
+| `example_data_quality` | SQL data quality checks | Daily |
+| `example_taskflow_api` | TaskFlow API with `@task` decorator | Manual |
+| `example_monitoring` | Platform health monitoring | Every 15 min |
+
+### Creating a New DAG
+
+1. Create a Python file in `pipelines/dags/`
+2. Import operators from `operators/` or use built-in providers
+3. Define the DAG with `default_args`, `schedule`, and `tags`
+4. The scheduler picks up new DAGs within 60 seconds
+
+See `docs/dag-development-guide.md` for detailed instructions.
+
+### Connections
+
+Airflow connections (PostgreSQL, MinIO) are automatically configured during initialization via `infrastructure/airflow/init-connections.sh`. To add new connections, update the script and `pipelines/config/connections.yaml`.
+
+### Troubleshooting
+
+- **DAGs not appearing**: Check for import errors in `make airflow-cli CMD="dags list-import-errors"`
+- **Connection errors**: Verify connections with `make airflow-connections`
+- **Scheduler issues**: Check logs with `make airflow-logs`
+- **Reset state**: Run `make airflow-reset` to reset the Airflow database (dev only)
 
 ## Steps
 

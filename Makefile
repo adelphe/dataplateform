@@ -1,4 +1,4 @@
-.PHONY: setup start stop restart status test logs clean help
+.PHONY: setup start stop restart status test logs clean help airflow-cli airflow-logs airflow-test-dag airflow-connections airflow-reset
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -52,3 +52,18 @@ logs: ## Tail logs from all services
 
 clean: ## Stop services and remove volumes
 	docker compose down -v
+
+airflow-cli: ## Execute Airflow CLI command (usage: make airflow-cli CMD="dags list")
+	docker compose exec airflow-webserver airflow $(CMD)
+
+airflow-logs: ## Tail Airflow scheduler and webserver logs
+	docker compose logs -f airflow-scheduler airflow-webserver
+
+airflow-test-dag: ## Test DAG file (usage: make airflow-test-dag DAG=example_hello_world)
+	docker compose exec airflow-webserver airflow dags test $(DAG)
+
+airflow-connections: ## List all Airflow connections
+	docker compose exec airflow-webserver airflow connections list
+
+airflow-reset: ## Reset Airflow database (development only)
+	docker compose exec airflow-webserver airflow db reset -y
