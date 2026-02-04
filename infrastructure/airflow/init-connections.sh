@@ -33,3 +33,25 @@ else
 fi
 
 echo "=== Airflow connections initialized ==="
+
+# Initialize ingestion tracking tables
+echo ""
+echo "=== Initializing ingestion tracking tables ==="
+
+PGHOST="${POSTGRES_HOST:-postgres}"
+PGPORT="${POSTGRES_PORT:-5432}"
+PGUSER="${POSTGRES_USER:-airflow}"
+PGPASSWORD="${POSTGRES_PASSWORD:-airflow}"
+PGDATABASE="${POSTGRES_DB:-airflow}"
+export PGPASSWORD
+
+INIT_SQL="/opt/airflow/infrastructure/postgres/init_ingestion_tables.sql"
+if [ -f "${INIT_SQL}" ]; then
+    psql -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" -d "${PGDATABASE}" -f "${INIT_SQL}" \
+        && echo "Ingestion tracking tables initialized successfully" \
+        || echo "WARNING: Failed to initialize ingestion tracking tables"
+else
+    echo "WARNING: ${INIT_SQL} not found, skipping ingestion table initialization"
+fi
+
+echo "=== Initialization complete ==="

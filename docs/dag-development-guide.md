@@ -214,6 +214,53 @@ Test a single task:
 make airflow-cli CMD="tasks test my_pipeline my_task 2024-01-01"
 ```
 
+## Building Ingestion Pipelines
+
+The `pipelines/ingestion/` package provides reusable modules for building batch ingestion DAGs. See the reference DAG at `pipelines/dags/ingestion/sample_batch_ingestion.py` for a complete working example.
+
+### Available Modules
+
+| Module | Purpose |
+|---|---|
+| `ingestion.file_ingestor` | Ingest CSV/JSON files to Bronze layer |
+| `ingestion.database_ingestor` | Extract PostgreSQL tables (full or incremental) |
+| `ingestion.schema_detector` | Detect schemas from files and database tables |
+| `ingestion.metadata_logger` | Track ingestion runs with row counts and checksums |
+| `ingestion.watermark_manager` | Manage incremental load state with high-water marks |
+
+### Quick Example: File Ingestion Task
+
+```python
+def _ingest_files(**context):
+    from ingestion.file_ingestor import batch_ingest_files
+
+    results = batch_ingest_files("/opt/airflow/data/input", "*.csv", context["ds"])
+    uris = [r["uri"] for r in results if "uri" in r]
+    context["ti"].xcom_push(key="uris", value=uris)
+```
+
+### Quick Example: Incremental Database Extraction
+
+```python
+def _extract_incremental(**context):
+    from ingestion.database_ingestor import extract_table_incremental
+
+    result = extract_table_incremental(
+        table_name="orders",
+        schema="public",
+        watermark_column="updated_at",
+        object_key=f"postgres/orders/{context['ds']}/orders.parquet",
+        execution_date=context["ds"],
+    )
+    print(f"Extracted {result['row_count']} rows, watermark={result.get('watermark')}")
+```
+
+### Watermarking for Incremental Loads
+
+The watermark manager stores the last-seen value of a column (e.g. `updated_at`) so that subsequent runs only extract new or changed rows. On the first run, a full extract is performed automatically.
+
+For detailed patterns and best practices, see `docs/ingestion-patterns.md`.
+
 ## Best Practices
 
 1. **Keep DAGs simple**: Each DAG should represent one logical pipeline

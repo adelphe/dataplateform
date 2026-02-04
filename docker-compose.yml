@@ -33,6 +33,7 @@ x-airflow-common: &airflow-common
     - ./pipelines/operators:/opt/airflow/operators
     - ./pipelines/utils:/opt/airflow/utils
     - ./pipelines/config:/opt/airflow/config
+    - ./pipelines/ingestion:/opt/airflow/ingestion
     - ./scripts:/opt/airflow/scripts
   depends_on:
     postgres:
@@ -114,6 +115,7 @@ services:
       - ./pipelines/operators:/opt/airflow/operators
       - ./pipelines/utils:/opt/airflow/utils
       - ./pipelines/config:/opt/airflow/config
+      - ./pipelines/ingestion:/opt/airflow/ingestion
       - ./infrastructure/airflow/init-connections.sh:/opt/airflow/scripts/init-connections.sh
       - ./scripts:/opt/airflow/scripts/data
     depends_on:

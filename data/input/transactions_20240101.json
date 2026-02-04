@@ -1,0 +1,12 @@
+[
+  {"transaction_id": 1001, "customer_id": 1, "amount": 49.99, "currency": "USD", "product_id": 201, "quantity": 1, "timestamp": "2024-01-01T08:15:00Z"},
+  {"transaction_id": 1002, "customer_id": 3, "amount": 129.50, "currency": "USD", "product_id": 205, "quantity": 2, "timestamp": "2024-01-01T09:30:00Z"},
+  {"transaction_id": 1003, "customer_id": 5, "amount": 24.99, "currency": "USD", "product_id": 202, "quantity": 1, "timestamp": "2024-01-01T10:45:00Z"},
+  {"transaction_id": 1004, "customer_id": 2, "amount": 199.00, "currency": "USD", "product_id": 210, "quantity": 1, "timestamp": "2024-01-01T11:00:00Z"},
+  {"transaction_id": 1005, "customer_id": 7, "amount": 75.00, "currency": "USD", "product_id": 203, "quantity": 3, "timestamp": "2024-01-01T12:20:00Z"},
+  {"transaction_id": 1006, "customer_id": 4, "amount": 59.99, "currency": "USD", "product_id": 204, "quantity": 1, "timestamp": "2024-01-01T13:10:00Z"},
+  {"transaction_id": 1007, "customer_id": 8, "amount": 320.00, "currency": "USD", "product_id": 210, "quantity": 2, "timestamp": "2024-01-01T14:30:00Z"},
+  {"transaction_id": 1008, "customer_id": 1, "amount": 15.50, "currency": "USD", "product_id": 201, "quantity": 1, "timestamp": "2024-01-01T15:45:00Z"},
+  {"transaction_id": 1009, "customer_id": 6, "amount": 89.99, "currency": "USD", "product_id": 207, "quantity": 1, "timestamp": "2024-01-01T16:00:00Z"},
+  {"transaction_id": 1010, "customer_id": 10, "amount": 42.50, "currency": "USD", "product_id": 206, "quantity": 2, "timestamp": "2024-01-01T17:30:00Z"}
+]
