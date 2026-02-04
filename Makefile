@@ -1,4 +1,4 @@
-.PHONY: setup start stop restart status test logs clean help airflow-cli airflow-logs airflow-test-dag airflow-connections airflow-reset
+.PHONY: setup start stop restart status test logs clean help airflow-cli airflow-logs airflow-test-dag airflow-connections airflow-reset minio-buckets minio-upload-sample minio-verify minio-console
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -10,7 +10,7 @@ setup: ## Initial project setup: copy env file and create required directories
 	else \
 		echo ".env file already exists, skipping"; \
 	fi
-	@mkdir -p pipelines/dags pipelines/plugins pipelines/logs
+	@mkdir -p pipelines/dags pipelines/plugins pipelines/logs scripts
 
 start: ## Start all services
 	docker compose up -d
@@ -67,3 +67,15 @@ airflow-connections: ## List all Airflow connections
 
 airflow-reset: ## Reset Airflow database (development only)
 	docker compose exec airflow-webserver airflow db reset -y
+
+minio-buckets: ## List all MinIO buckets and their contents
+	docker compose exec minio mc ls local/
+
+minio-upload-sample: ## Upload sample test data to bronze layer
+	docker compose exec airflow-webserver python /opt/airflow/scripts/upload_sample_data.py
+
+minio-verify: ## Verify MinIO bucket structure and connectivity
+	docker compose exec airflow-webserver python /opt/airflow/scripts/verify_buckets.py
+
+minio-console: ## Show MinIO console URL
+	@echo "MinIO Console: http://localhost:9001 (minio / minio123)"

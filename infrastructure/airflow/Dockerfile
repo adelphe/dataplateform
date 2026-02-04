@@ -13,3 +13,7 @@ USER airflow
 
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Copy utility scripts and make them executable
+COPY --chown=airflow:root scripts/ /opt/airflow/scripts/
+RUN chmod +x /opt/airflow/scripts/*.py 2>/dev/null || true

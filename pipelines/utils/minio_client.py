@@ -138,3 +138,123 @@ def delete_object(bucket_name: str, object_name: str) -> None:
     client = get_minio_client()
     client.delete_object(Bucket=bucket_name, Key=object_name)
     log.info("Deleted %s/%s", bucket_name, object_name)
+
+
+def create_bucket(bucket_name: str) -> bool:
+    """Create a bucket if it does not already exist.
+
+    Args:
+        bucket_name: Name of the bucket to create.
+
+    Returns:
+        True if the bucket was created, False if it already existed.
+    """
+    client = get_minio_client()
+    try:
+        client.head_bucket(Bucket=bucket_name)
+        log.info("Bucket '%s' already exists", bucket_name)
+        return False
+    except ClientError:
+        client.create_bucket(Bucket=bucket_name)
+        log.info("Created bucket '%s'", bucket_name)
+        return True
+
+
+def bucket_exists(bucket_name: str) -> bool:
+    """Check whether a bucket exists.
+
+    Args:
+        bucket_name: Name of the bucket to check.
+
+    Returns:
+        True if the bucket exists, False otherwise.
+    """
+    client = get_minio_client()
+    try:
+        client.head_bucket(Bucket=bucket_name)
+        return True
+    except ClientError:
+        return False
+
+
+def put_object_with_metadata(
+    file_path: str,
+    bucket_name: str,
+    object_name: str,
+    metadata: Optional[dict] = None,
+) -> str:
+    """Upload a file with custom metadata attached.
+
+    Args:
+        file_path: Path to the local file.
+        bucket_name: Target bucket name.
+        object_name: Object key in the bucket.
+        metadata: Optional dict of metadata key-value pairs.
+
+    Returns:
+        The object name (key) of the uploaded file.
+    """
+    client = get_minio_client()
+
+    try:
+        client.head_bucket(Bucket=bucket_name)
+    except ClientError:
+        log.info("Creating bucket: %s", bucket_name)
+        client.create_bucket(Bucket=bucket_name)
+
+    extra_args = {}
+    if metadata:
+        extra_args["Metadata"] = metadata
+
+    client.upload_file(
+        Filename=file_path,
+        Bucket=bucket_name,
+        Key=object_name,
+        ExtraArgs=extra_args if extra_args else None,
+    )
+    log.info("Uploaded %s to %s/%s (with metadata)", file_path, bucket_name, object_name)
+    return object_name
+
+
+def copy_object(
+    source_bucket: str,
+    source_key: str,
+    dest_bucket: str,
+    dest_key: str,
+) -> str:
+    """Copy an object between buckets.
+
+    Args:
+        source_bucket: Source bucket name.
+        source_key: Source object key.
+        dest_bucket: Destination bucket name.
+        dest_key: Destination object key.
+
+    Returns:
+        The destination object key.
+    """
+    client = get_minio_client()
+
+    try:
+        client.head_bucket(Bucket=dest_bucket)
+    except ClientError:
+        log.info("Creating destination bucket: %s", dest_bucket)
+        client.create_bucket(Bucket=dest_bucket)
+
+    copy_source = {"Bucket": source_bucket, "Key": source_key}
+    client.copy_object(CopySource=copy_source, Bucket=dest_bucket, Key=dest_key)
+    log.info("Copied %s/%s to %s/%s", source_bucket, source_key, dest_bucket, dest_key)
+    return dest_key
+
+
+def list_buckets() -> List[dict]:
+    """List all buckets in the MinIO instance.
+
+    Returns:
+        List of bucket dicts with 'Name' and 'CreationDate' keys.
+    """
+    client = get_minio_client()
+    response = client.list_buckets()
+    buckets = response.get("Buckets", [])
+    log.info("Found %d buckets", len(buckets))
+    return buckets

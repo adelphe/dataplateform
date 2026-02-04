@@ -33,6 +33,7 @@ x-airflow-common: &airflow-common
     - ./pipelines/operators:/opt/airflow/operators
     - ./pipelines/utils:/opt/airflow/utils
     - ./pipelines/config:/opt/airflow/config
+    - ./scripts:/opt/airflow/scripts
   depends_on:
     postgres:
       condition: service_healthy
@@ -73,6 +74,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # -- MinIO Bucket Initialization --
+  minio-init:
+    image: minio/mc:latest
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+      MINIO_HOST: minio
+      MINIO_PORT: "9000"
+    volumes:
+      - ./infrastructure/minio/init-buckets.sh:/init-buckets.sh
+    entrypoint: /bin/sh
+    command: -c "sleep 5 && /init-buckets.sh"
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+
   # -- Airflow --
   airflow-init:
     <<: *airflow-common
@@ -97,6 +115,12 @@ services:
       - ./pipelines/utils:/opt/airflow/utils
       - ./pipelines/config:/opt/airflow/config
       - ./infrastructure/airflow/init-connections.sh:/opt/airflow/scripts/init-connections.sh
+      - ./scripts:/opt/airflow/scripts/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     restart: "no"
 
   airflow-webserver:

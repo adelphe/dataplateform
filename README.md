@@ -7,11 +7,13 @@ A modern data platform monorepo with orchestration, transformations, data qualit
 ```
 .
 ├── infrastructure/          # IaC and environment configs
-│   └── airflow/             # Custom Airflow Docker image
-│       ├── Dockerfile
-│       ├── requirements.txt
-│       ├── init-connections.sh
-│       └── airflow.cfg
+│   ├── airflow/             # Custom Airflow Docker image
+│   │   ├── Dockerfile
+│   │   ├── requirements.txt
+│   │   ├── init-connections.sh
+│   │   └── airflow.cfg
+│   └── minio/               # MinIO bucket initialization
+│       └── init-buckets.sh
 ├── pipelines/               # Airflow DAGs, operators, and pipeline logic
 │   ├── __init__.py
 │   ├── dags/
@@ -24,6 +26,7 @@ A modern data platform monorepo with orchestration, transformations, data qualit
 │   └── logs/
 ├── transformations/         # dbt models and macros
 ├── data-quality/            # Data validation and quality checks
+├── scripts/                 # Utility scripts (sample data, verification)
 ├── docs/                    # Project documentation
 ├── docker-compose.yml       # Local development services
 ├── Makefile                 # Common commands
@@ -39,6 +42,18 @@ A modern data platform monorepo with orchestration, transformations, data qualit
 | MinIO Console      | http://localhost:9001         | minio / minio123    |
 | MinIO API          | http://localhost:9000         | -                   |
 | PostgreSQL         | localhost:5432                | airflow / airflow   |
+
+## MinIO Storage Layers
+
+The platform uses the medallion architecture for data organization:
+
+| Bucket | Layer | Purpose |
+|--------|-------|---------|
+| raw | Bronze | Raw ingested data (immutable) |
+| staging | Silver | Cleaned and validated data |
+| curated | Gold | Business-ready aggregated data |
+
+Buckets are automatically created on platform startup via the `minio-init` service. See `docs/minio-setup.md` for detailed documentation.
 
 ## Getting Started
 
@@ -74,6 +89,15 @@ make restart             # Restart all services
 make test                # Run all tests
 make logs                # Tail logs from all services
 make clean               # Stop services and remove volumes
+```
+
+### MinIO Commands
+
+```bash
+make minio-buckets              # List all buckets and contents
+make minio-upload-sample        # Upload sample test data
+make minio-verify               # Verify bucket structure
+make minio-console              # Show MinIO console URL
 ```
 
 ### Airflow Commands

@@ -1,7 +1,11 @@
 """Pytest configuration and shared fixtures for pipeline tests."""
 
+import csv
+import io
+import json
 import os
 import sys
+import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -71,3 +75,81 @@ def postgres_env():
     }
     with patch.dict(os.environ, env_vars):
         yield env_vars
+
+
+@pytest.fixture
+def mock_minio_client():
+    """Create a mock MinIO/S3 client with common operations stubbed."""
+    import utils.minio_client as mc_mod
+
+    client = MagicMock()
+    client.list_buckets.return_value = {
+        "Buckets": [
+            {"Name": "raw", "CreationDate": "2024-01-01T00:00:00Z"},
+            {"Name": "staging", "CreationDate": "2024-01-01T00:00:00Z"},
+            {"Name": "curated", "CreationDate": "2024-01-01T00:00:00Z"},
+        ]
+    }
+    client.head_bucket.return_value = {}
+    client.list_objects_v2.return_value = {"Contents": [], "IsTruncated": False}
+
+    original = mc_mod._client
+    mc_mod._client = client
+    yield client
+    mc_mod._client = original
+
+
+@pytest.fixture
+def sample_csv_file():
+    """Create a temporary CSV file with sample data."""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, newline=""
+    ) as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "name", "email"])
+        writer.writerow([1, "Alice", "alice@example.com"])
+        writer.writerow([2, "Bob", "bob@example.com"])
+        path = f.name
+    yield path
+    if os.path.exists(path):
+        os.unlink(path)
+
+
+@pytest.fixture
+def sample_json_file():
+    """Create a temporary JSON file with sample data."""
+    data = [
+        {"id": 1, "amount": 100.0, "timestamp": "2024-01-01T00:00:00Z"},
+        {"id": 2, "amount": 250.5, "timestamp": "2024-01-02T00:00:00Z"},
+    ]
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False
+    ) as f:
+        json.dump(data, f)
+        path = f.name
+    yield path
+    if os.path.exists(path):
+        os.unlink(path)
+
+
+@pytest.fixture
+def sample_parquet_file():
+    """Create a temporary Parquet file with sample data."""
+    try:
+        import pandas as pd
+
+        df = pd.DataFrame(
+            {
+                "product_id": [1, 2, 3],
+                "name": ["Widget", "Gadget", "Doohickey"],
+                "price": [9.99, 24.99, 4.99],
+            }
+        )
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=False) as f:
+            path = f.name
+        df.to_parquet(path, index=False)
+        yield path
+        if os.path.exists(path):
+            os.unlink(path)
+    except ImportError:
+        pytest.skip("pandas/pyarrow not available")
