@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-sys.path.insert(0, "/opt/airflow")
+sys.path.insert(0, "/opt/airflow/pipelines")
 
 from operators.data_quality_operator import DataQualityCheckOperator
 

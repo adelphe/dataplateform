@@ -7,6 +7,7 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 
+from airflow.hooks.base import BaseHook
 from airflow.sensors.base import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 
@@ -43,10 +44,28 @@ class MinIOFileSensorOperator(BaseSensorOperator):
         self.wildcard_match = wildcard_match
 
     def _get_client(self):
-        """Create a boto3 S3 client configured for MinIO."""
-        endpoint_url = os.environ.get("AWS_ENDPOINT_URL", "http://minio:9000")
-        access_key = os.environ.get("AWS_ACCESS_KEY_ID", "minio")
-        secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "minio123")
+        """Create a boto3 S3 client configured for MinIO using the Airflow connection."""
+        try:
+            conn = BaseHook.get_connection(self.minio_conn_id)
+            extra = conn.extra_dejson if conn.extra else {}
+            endpoint_url = extra.get("endpoint_url") or extra.get("host", "http://minio:9000")
+            access_key = conn.login
+            secret_key = conn.password
+
+            if not access_key or not secret_key:
+                raise ValueError(
+                    f"Connection '{self.minio_conn_id}' is missing login (access key) "
+                    "or password (secret key)."
+                )
+        except Exception:
+            log.warning(
+                "Could not retrieve Airflow connection '%s', "
+                "falling back to environment variables.",
+                self.minio_conn_id,
+            )
+            endpoint_url = os.environ.get("AWS_ENDPOINT_URL", "http://minio:9000")
+            access_key = os.environ.get("AWS_ACCESS_KEY_ID", "minio")
+            secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "minio123")
 
         return boto3.client(
             "s3",
