@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLA Violation Alert</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #FF6600;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .timeline {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        .timeline-item {
+            text-align: center;
+        }
+        .timeline-value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .timeline-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .timeline-arrow {
+            font-size: 24px;
+            color: #ccc;
+        }
+        .delay-badge {
+            background-color: #FF6600;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .details {
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .details td:first-child {
+            font-weight: bold;
+            width: 140px;
+            color: #666;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>SLA Violation Alert</h1>
+    </div>
+    <div class="content">
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-value">{{ expected_time }}</div>
+                <div class="timeline-label">Expected SLA</div>
+            </div>
+            <div class="timeline-arrow">&rarr;</div>
+            <div class="timeline-item">
+                <div class="timeline-value">{{ actual_time | default('Pending') }}</div>
+                <div class="timeline-label">{{ 'Completed' if actual_time else 'Still Running' }}</div>
+            </div>
+            {% if delay %}
+            <div class="timeline-arrow">=</div>
+            <div class="timeline-item">
+                <span class="delay-badge">{{ delay }} late</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="details">
+            <table>
+                <tr>
+                    <td>DAG</td>
+                    <td>{{ dag_id }}</td>
+                </tr>
+                <tr>
+                    <td>Task</td>
+                    <td>{{ task_id }}</td>
+                </tr>
+                <tr>
+                    <td>Execution Date</td>
+                    <td>{{ execution_date }}</td>
+                </tr>
+                <tr>
+                    <td>SLA Definition</td>
+                    <td>{{ sla_definition }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>Recommended Actions</h3>
+        <ul>
+            <li>Check task logs for errors or performance issues</li>
+            <li>Verify upstream dependencies completed on time</li>
+            <li>Review resource allocation and queue status</li>
+            <li>Consider adjusting SLA if consistently missed</li>
+        </ul>
+
+        {% if airflow_url %}
+        <a href="{{ airflow_url }}" class="action-button">View in Airflow</a>
+        {% endif %}
+    </div>
+    <div class="footer">
+        <p>This is an automated alert from the Data Platform.</p>
+        <p>{{ timestamp }}</p>
+    </div>
+</body>
+</html>

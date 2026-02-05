@@ -34,11 +34,43 @@ INPUT_DIR = "/opt/airflow/data/input"
 
 
 def _on_failure_callback(context):
-    """Log failure details for alerting."""
+    """Handle task failure with alerting.
+
+    Sends notifications via Slack and email using the alerting system,
+    including ingestion statistics when available.
+    """
     dag_id = context["dag"].dag_id
     task_id = context["task_instance"].task_id
     execution_date = context["execution_date"]
+
+    # Log failure
     print(f"ALERT: Task {task_id} in DAG {dag_id} failed at {execution_date}")
+
+    try:
+        from utils.alerting import (
+            format_task_failure_alert,
+            send_alert,
+            AlertSeverity,
+        )
+
+        # Format and send alert
+        alert_data = format_task_failure_alert(context)
+
+        # Add ingestion-specific context
+        ti = context.get("task_instance")
+        if ti:
+            csv_count = ti.xcom_pull(task_ids="ingest_csv_files", key="csv_count")
+            json_count = ti.xcom_pull(task_ids="ingest_json_files", key="json_count")
+            if csv_count is not None or json_count is not None:
+                alert_data["fields"].append({
+                    "title": "Ingestion Stats",
+                    "value": f"CSV: {csv_count or 0}, JSON: {json_count or 0}",
+                    "short": True,
+                })
+
+        send_alert(alert_data)
+    except Exception as e:
+        print(f"Warning: Failed to send failure alert: {e}")
 
 
 # ---------------------------------------------------------------------------

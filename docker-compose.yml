@@ -65,6 +65,7 @@ services:
       - ./infrastructure/postgres/init_ingestion_tables.sql:/docker-entrypoint-initdb.d/01_init_ingestion_tables.sql
       - ./infrastructure/postgres/init_dbt_schemas.sql:/docker-entrypoint-initdb.d/02_init_dbt_schemas.sql
       - ./data-quality/init_validation_tables.sql:/docker-entrypoint-initdb.d/03_init_validation_tables.sql
+      - ./infrastructure/postgres/init_monitoring_tables.sql:/docker-entrypoint-initdb.d/04_init_monitoring_tables.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow}"]
       interval: 10s

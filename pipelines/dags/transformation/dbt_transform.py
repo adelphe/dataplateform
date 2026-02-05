@@ -46,11 +46,55 @@ default_args = {
 
 
 def _on_failure_callback(context):
-    """Log failure details for alerting."""
+    """Handle dbt transformation failure with alerting.
+
+    Sends notifications via Slack and email using the alerting system,
+    including dbt model failure details and data lineage context.
+    """
     dag_id = context["dag"].dag_id
     task_id = context["task_instance"].task_id
     execution_date = context["execution_date"]
+
+    # Log failure
     print(f"ALERT: Task {task_id} in DAG {dag_id} failed at {execution_date}")
+
+    try:
+        from utils.alerting import (
+            format_task_failure_alert,
+            send_alert,
+            AlertSeverity,
+        )
+
+        # Format and send alert
+        alert_data = format_task_failure_alert(context)
+
+        # Add dbt-specific context
+        dbt_layers = {
+            "dbt_run_staging": "staging",
+            "dbt_run_intermediate": "intermediate",
+            "dbt_run_marts": "marts",
+            "dbt_test_staging": "staging tests",
+            "dbt_test_marts": "marts tests",
+        }
+        if task_id in dbt_layers:
+            alert_data["fields"].append({
+                "title": "dbt Layer",
+                "value": dbt_layers[task_id],
+                "short": True,
+            })
+            alert_data["fields"].append({
+                "title": "Downstream Impact",
+                "value": "Analytics tables may be stale or incorrect",
+                "short": False,
+            })
+
+        # Elevate severity for marts failures
+        if "marts" in task_id:
+            alert_data["severity"] = AlertSeverity.CRITICAL
+
+        send_alert(alert_data)
+    except Exception as e:
+        print(f"Warning: Failed to send failure alert: {e}")
 
 
 def _log_transformation_summary(**context):

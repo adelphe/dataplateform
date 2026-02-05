@@ -80,6 +80,17 @@ import_dashboards() {
     echo "[INFO] Dashboards imported successfully"
 }
 
+# Setup monitoring dashboard
+setup_monitoring_dashboard() {
+    echo "[INFO] Setting up monitoring dashboard..."
+    if [ -f /app/superset_init/setup_monitoring_dashboard.py ]; then
+        python /app/superset_init/setup_monitoring_dashboard.py || {
+            echo "[WARN] Monitoring dashboard setup encountered issues (may be expected on first run)"
+        }
+    fi
+    echo "[INFO] Monitoring dashboard setup complete"
+}
+
 # Main execution
 main() {
     echo "[INFO] Starting Superset initialization..."
@@ -96,6 +107,9 @@ main() {
     # Import dashboards
     import_dashboards
 
+    # Setup monitoring dashboard
+    setup_monitoring_dashboard
+
     echo "========================================"
     echo "Superset initialization complete!"
     echo "========================================"
@@ -107,6 +121,7 @@ main() {
     echo "  - Customer Insights"
     echo "  - Product Performance"
     echo "  - Daily Operations"
+    echo "  - Platform Operations (Monitoring)"
     echo ""
 }
 

@@ -1,0 +1,281 @@
+{
+  "dashboard_title": "Platform Operations",
+  "description": "Operational monitoring dashboard for the Data Platform",
+  "slug": "platform-operations",
+  "position_json": {
+    "DASHBOARD_VERSION_KEY": "v2",
+    "ROOT_ID": {"type": "ROOT", "id": "ROOT_ID", "children": ["GRID_ID"]},
+    "GRID_ID": {
+      "type": "GRID",
+      "id": "GRID_ID",
+      "children": ["ROW-health-metrics", "ROW-freshness", "ROW-quality", "ROW-alerts"],
+      "parents": ["ROOT_ID"]
+    }
+  },
+  "metadata": {
+    "timed_refresh_immune_slices": [],
+    "expanded_slices": {},
+    "refresh_frequency": 300,
+    "default_filters": "{}",
+    "color_scheme": "supersetColors",
+    "label_colors": {},
+    "shared_label_colors": {}
+  },
+  "charts": [
+    {
+      "slice_name": "Platform Health Score",
+      "viz_type": "big_number",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "metric": {
+          "expressionType": "SQL",
+          "sqlExpression": "AVG(health_score)",
+          "label": "Avg Health Score"
+        },
+        "compare_lag": 1,
+        "compare_suffix": "day",
+        "y_axis_format": ".0f",
+        "color_picker": {"r": 33, "g": 150, "b": 243, "a": 1},
+        "header_font_size": 0.5,
+        "subheader_font_size": 0.2
+      }
+    },
+    {
+      "slice_name": "Total DAGs",
+      "viz_type": "big_number_total",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "metric": {
+          "expressionType": "SQL",
+          "sqlExpression": "MAX(total_dags)",
+          "label": "Total DAGs"
+        },
+        "y_axis_format": ".0f",
+        "header_font_size": 0.4
+      }
+    },
+    {
+      "slice_name": "Failed Tasks (24h)",
+      "viz_type": "big_number_total",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "metric": {
+          "expressionType": "SQL",
+          "sqlExpression": "SUM(failed_tasks_24h)",
+          "label": "Failed Tasks"
+        },
+        "y_axis_format": ".0f",
+        "color_picker": {"r": 244, "g": 67, "b": 54, "a": 1}
+      }
+    },
+    {
+      "slice_name": "SLA Compliance",
+      "viz_type": "big_number_total",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "metric": {
+          "expressionType": "SQL",
+          "sqlExpression": "AVG(sla_compliance_percent)",
+          "label": "SLA Compliance %"
+        },
+        "y_axis_format": ".1f",
+        "subheader": "%",
+        "color_picker": {"r": 76, "g": 175, "b": 80, "a": 1}
+      }
+    },
+    {
+      "slice_name": "Data Freshness Heatmap",
+      "viz_type": "heatmap",
+      "datasource": "vw_data_freshness_status",
+      "params": {
+        "all_columns_x": "source_name",
+        "all_columns_y": "layer",
+        "metric": {
+          "expressionType": "SQL",
+          "sqlExpression": "AVG(staleness_hours)",
+          "label": "Staleness Hours"
+        },
+        "linear_color_scheme": "schemeRdYlGn",
+        "xscale_interval": null,
+        "yscale_interval": null,
+        "canvas_image_rendering": "auto",
+        "normalize_across": "heatmap",
+        "show_legend": true
+      }
+    },
+    {
+      "slice_name": "Task Failure Trends",
+      "viz_type": "echarts_timeseries_line",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "x_axis": "metric_date",
+        "time_grain_sqla": "P1D",
+        "metrics": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(failed_tasks_24h)",
+            "label": "Failed Tasks"
+          },
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(successful_tasks_24h)",
+            "label": "Successful Tasks"
+          }
+        ],
+        "row_limit": 30,
+        "show_legend": true,
+        "legendType": "scroll",
+        "legendOrientation": "top",
+        "x_axis_title": "Date",
+        "y_axis_title": "Task Count",
+        "rich_tooltip": true,
+        "tooltipTimeFormat": "%Y-%m-%d"
+      }
+    },
+    {
+      "slice_name": "Data Quality Metrics",
+      "viz_type": "echarts_timeseries_bar",
+      "datasource": "data_quality_metrics",
+      "params": {
+        "x_axis": "validation_date",
+        "time_grain_sqla": "P1D",
+        "metrics": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(CASE WHEN success THEN 1 ELSE 0 END)",
+            "label": "Passed"
+          },
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(CASE WHEN NOT success THEN 1 ELSE 0 END)",
+            "label": "Failed"
+          }
+        ],
+        "groupby": ["layer"],
+        "stack": true,
+        "show_legend": true,
+        "row_limit": 100
+      }
+    },
+    {
+      "slice_name": "SLA Compliance Trends",
+      "viz_type": "echarts_timeseries_line",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "x_axis": "metric_date",
+        "time_grain_sqla": "P1D",
+        "metrics": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "AVG(sla_compliance_percent)",
+            "label": "SLA Compliance %"
+          }
+        ],
+        "row_limit": 30,
+        "y_axis_bounds": [0, 100],
+        "show_legend": false,
+        "x_axis_title": "Date",
+        "y_axis_title": "Compliance %",
+        "annotation_layers": [
+          {
+            "name": "Target",
+            "value": 95,
+            "style": "dashed",
+            "color": "#FF0000"
+          }
+        ]
+      }
+    },
+    {
+      "slice_name": "Data Volume Trends",
+      "viz_type": "echarts_timeseries_line",
+      "datasource": "ingestion_metadata",
+      "params": {
+        "x_axis": "execution_date",
+        "time_grain_sqla": "P1D",
+        "metrics": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(row_count)",
+            "label": "Total Rows"
+          }
+        ],
+        "groupby": ["source_name"],
+        "row_limit": 100,
+        "show_legend": true,
+        "legendType": "scroll",
+        "legendOrientation": "right"
+      }
+    },
+    {
+      "slice_name": "Unacknowledged Alerts",
+      "viz_type": "table",
+      "datasource": "vw_unacknowledged_alerts",
+      "params": {
+        "query_mode": "raw",
+        "all_columns": ["severity", "alert_type", "subject", "dag_id", "task_id", "created_at", "hours_since_alert"],
+        "order_by_cols": ["[\"created_at\", false]"],
+        "row_limit": 20,
+        "page_length": 10,
+        "include_search": true,
+        "table_timestamp_format": "%Y-%m-%d %H:%M",
+        "color_pn": true
+      }
+    },
+    {
+      "slice_name": "Ingestion Statistics",
+      "viz_type": "echarts_timeseries_bar",
+      "datasource": "ingestion_metadata",
+      "params": {
+        "x_axis": "execution_date",
+        "time_grain_sqla": "P1D",
+        "metrics": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "COUNT(*)",
+            "label": "Files Ingested"
+          },
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(row_count)",
+            "label": "Rows Processed"
+          }
+        ],
+        "groupby": ["source_name"],
+        "row_limit": 50,
+        "show_legend": true
+      }
+    },
+    {
+      "slice_name": "Health Score Trend",
+      "viz_type": "echarts_timeseries_line",
+      "datasource": "platform_health_metrics",
+      "params": {
+        "x_axis": "metric_time",
+        "time_grain_sqla": "PT1H",
+        "metrics": [
+          {
+            "expressionType": "SQL",
+            "sqlExpression": "AVG(health_score)",
+            "label": "Health Score"
+          }
+        ],
+        "row_limit": 168,
+        "y_axis_bounds": [0, 100],
+        "area": true,
+        "show_legend": false,
+        "x_axis_title": "Time",
+        "y_axis_title": "Health Score"
+      }
+    }
+  ],
+  "css": "",
+  "json_metadata": {
+    "timed_refresh_immune_slices": [],
+    "filter_scopes": {},
+    "expanded_slices": {},
+    "refresh_frequency": 300,
+    "default_filters": "{}",
+    "chart_configuration": {}
+  }
+}

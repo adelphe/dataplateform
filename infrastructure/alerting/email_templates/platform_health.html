@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platform Health Alert</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: {{ header_color | default('#FF6600') }};
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .health-score {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .health-score-value {
+            font-size: 64px;
+            font-weight: bold;
+            color: {{ score_color | default('#FF6600') }};
+        }
+        .health-score-label {
+            color: #666;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metric {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .metric-label {
+            color: #666;
+            font-size: 12px;
+        }
+        .metric-good { color: #28a745; }
+        .metric-warning { color: #ffc107; }
+        .metric-bad { color: #dc3545; }
+        .issues-list {
+            background-color: #fff3f3;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .issue-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #ffdddd;
+            display: flex;
+            align-items: center;
+        }
+        .issue-item:last-child {
+            border-bottom: none;
+        }
+        .issue-icon {
+            margin-right: 10px;
+            font-size: 18px;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Platform Health Alert</h1>
+    </div>
+    <div class="content">
+        <div class="health-score">
+            <div class="health-score-value">{{ health_score }}%</div>
+            <div class="health-score-label">Platform Health Score</div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric">
+                <div class="metric-value {{ 'metric-good' if scheduler_healthy else 'metric-bad' }}">
+                    {{ 'Healthy' if scheduler_healthy else 'Unhealthy' }}
+                </div>
+                <div class="metric-label">Scheduler Status</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value {{ 'metric-bad' if failed_tasks_24h > 10 else 'metric-warning' if failed_tasks_24h > 5 else 'metric-good' }}">
+                    {{ failed_tasks_24h }}
+                </div>
+                <div class="metric-label">Failed Tasks (24h)</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value {{ 'metric-good' if sla_compliance >= 95 else 'metric-warning' if sla_compliance >= 80 else 'metric-bad' }}">
+                    {{ sla_compliance }}%
+                </div>
+                <div class="metric-label">SLA Compliance</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value {{ 'metric-good' if avg_freshness_hours < 6 else 'metric-warning' if avg_freshness_hours < 24 else 'metric-bad' }}">
+                    {{ avg_freshness_hours }}h
+                </div>
+                <div class="metric-label">Avg Data Freshness</div>
+            </div>
+        </div>
+
+        {% if issues %}
+        <h3>Detected Issues</h3>
+        <div class="issues-list">
+            {% for issue in issues %}
+            <div class="issue-item">
+                <span class="issue-icon">&#9888;</span>
+                <span>{{ issue }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <h3>Additional Metrics</h3>
+        <div class="metrics-grid">
+            <div class="metric">
+                <div class="metric-value">{{ total_dags }}</div>
+                <div class="metric-label">Total DAGs</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">{{ active_dags }}</div>
+                <div class="metric-label">Active DAGs</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">{{ queued_tasks }}</div>
+                <div class="metric-label">Queued Tasks</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">{{ running_tasks }}</div>
+                <div class="metric-label">Running Tasks</div>
+            </div>
+        </div>
+
+        {% if superset_url %}
+        <a href="{{ superset_url }}" class="action-button">View Dashboard</a>
+        {% endif %}
+    </div>
+    <div class="footer">
+        <p>This is an automated alert from the Data Platform.</p>
+        <p>Check Time: {{ timestamp }}</p>
+    </div>
+</body>
+</html>

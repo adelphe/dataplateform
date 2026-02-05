@@ -106,3 +106,65 @@ superset-console: ## Show Superset console URL and credentials
 	@echo "Admin: admin / admin"
 	@echo "Analyst: analyst / analyst123"
 	@echo "Viewer: viewer / viewer123"
+
+# ==============================
+# Monitoring Commands
+# ==============================
+
+monitor-health: ## Run platform health checks manually
+	docker compose exec airflow-webserver airflow dags trigger platform_health
+	@echo "Platform health DAG triggered. Check Airflow UI for results."
+
+view-alerts: ## Display recent unacknowledged alerts from database
+	@docker compose exec postgres psql -U airflow -d airflow -c "\
+		SELECT severity, alert_type, subject, \
+		       ROUND(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600, 1) as hours_ago \
+		FROM data_platform.alert_history \
+		WHERE acknowledged = false \
+		ORDER BY created_at DESC \
+		LIMIT 20;"
+
+test-alerting: ## Send test email and Slack notifications
+	@docker compose exec airflow-webserver python -c "\
+		from utils.alerting import send_slack_alert, send_email_alert, AlertSeverity; \
+		print('Testing Slack...'); \
+		slack_ok = send_slack_alert('Test alert from Data Platform', severity=AlertSeverity.LOW, title='Test Alert'); \
+		print(f'Slack: {\"OK\" if slack_ok else \"FAILED (check config)\"}'); \
+		print('Testing Email...'); \
+		email_ok = send_email_alert('Test Alert', 'This is a test alert from the Data Platform.'); \
+		print(f'Email: {\"OK\" if email_ok else \"FAILED (check config)\"}'); \
+	"
+
+monitoring-dashboard: ## Open Superset monitoring dashboard in browser
+	@echo "Opening monitoring dashboard..."
+	@which xdg-open > /dev/null && xdg-open http://localhost:8088/superset/dashboard/platform-operations/ || \
+	which open > /dev/null && open http://localhost:8088/superset/dashboard/platform-operations/ || \
+	echo "Visit: http://localhost:8088/superset/dashboard/platform-operations/"
+
+check-freshness: ## Run data freshness checks for all sources
+	@docker compose exec postgres psql -U airflow -d airflow -c "\
+		SELECT source_name, layer, \
+		       ROUND(staleness_hours::numeric, 1) as staleness_hours, \
+		       CASE WHEN is_fresh THEN 'FRESH' ELSE 'STALE' END as status, \
+		       check_time \
+		FROM data_platform.vw_data_freshness_status \
+		ORDER BY staleness_hours DESC;"
+
+health-score: ## Display current platform health score
+	@docker compose exec postgres psql -U airflow -d airflow -c "\
+		SELECT health_score, \
+		       CASE WHEN scheduler_healthy THEN 'OK' ELSE 'FAIL' END as scheduler, \
+		       failed_tasks_24h, \
+		       ROUND(sla_compliance_percent::numeric, 1) as sla_pct, \
+		       ROUND(avg_data_freshness_hours::numeric, 1) as freshness_hrs, \
+		       metric_time \
+		FROM data_platform.platform_health_metrics \
+		ORDER BY metric_time DESC \
+		LIMIT 1;"
+
+acknowledge-alerts: ## Mark all alerts as acknowledged
+	@docker compose exec postgres psql -U airflow -d airflow -c "\
+		UPDATE data_platform.alert_history \
+		SET acknowledged = true, acknowledged_at = NOW() \
+		WHERE acknowledged = false; \
+		SELECT COUNT(*) as alerts_acknowledged FROM data_platform.alert_history WHERE acknowledged_at > NOW() - INTERVAL '1 minute';"

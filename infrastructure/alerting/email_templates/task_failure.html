@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Failure Alert</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #FF6600;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .details {
+            background-color: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .details td:first-child {
+            font-weight: bold;
+            width: 140px;
+            color: #666;
+        }
+        .error-box {
+            background-color: #fff3f3;
+            border-left: 4px solid #ff0000;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Task Failure Alert</h1>
+    </div>
+    <div class="content">
+        <div class="details">
+            <table>
+                <tr>
+                    <td>DAG</td>
+                    <td>{{ dag_id }}</td>
+                </tr>
+                <tr>
+                    <td>Task</td>
+                    <td>{{ task_id }}</td>
+                </tr>
+                <tr>
+                    <td>Execution Date</td>
+                    <td>{{ execution_date }}</td>
+                </tr>
+                <tr>
+                    <td>Try Number</td>
+                    <td>{{ try_number }}</td>
+                </tr>
+                <tr>
+                    <td>Severity</td>
+                    <td>{{ severity }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>Error Details</h3>
+        <div class="error-box">
+            {{ exception }}
+        </div>
+
+        {% if log_url %}
+        <a href="{{ log_url }}" class="action-button">View Task Logs</a>
+        {% endif %}
+    </div>
+    <div class="footer">
+        <p>This is an automated alert from the Data Platform.</p>
+        <p>{{ timestamp }}</p>
+    </div>
+</body>
+</html>

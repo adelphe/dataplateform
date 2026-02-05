@@ -1,0 +1,147 @@
+# Alert Configuration for Data Platform
+# =====================================
+# Defines alert routing rules, severity mappings, and notification templates
+
+alerting:
+  # Global settings
+  enabled: true
+  default_severity: MEDIUM
+
+  # Channels configuration
+  channels:
+    email:
+      enabled: ${ALERT_EMAIL_ENABLED:-false}
+      from_address: ${SMTP_FROM_EMAIL:-alerts@dataplatform.local}
+      default_recipients:
+        - ${ALERT_EMAIL_RECIPIENTS:-ops@example.com}
+      templates_dir: email_templates
+
+    slack:
+      enabled: ${ALERT_SLACK_ENABLED:-false}
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      default_channel: ${SLACK_ALERT_CHANNEL:-#data-platform-alerts}
+      username: "Data Platform Alerts"
+      icon_emoji: ":chart_with_upwards_trend:"
+
+# Severity level definitions
+severity_levels:
+  CRITICAL:
+    priority: 1
+    color: "#FF0000"  # Red
+    emoji: ":rotating_light:"
+    notify_channels: [slack, email]
+    escalation_timeout_minutes: 15
+
+  HIGH:
+    priority: 2
+    color: "#FF6600"  # Orange
+    emoji: ":warning:"
+    notify_channels: [slack, email]
+    escalation_timeout_minutes: 30
+
+  MEDIUM:
+    priority: 3
+    color: "#FFCC00"  # Yellow
+    emoji: ":large_yellow_circle:"
+    notify_channels: [slack]
+    escalation_timeout_minutes: 60
+
+  LOW:
+    priority: 4
+    color: "#36A64F"  # Green
+    emoji: ":information_source:"
+    notify_channels: [slack]
+    escalation_timeout_minutes: null
+
+# Alert routing rules
+routing:
+  # Route by DAG tag
+  by_tag:
+    critical:
+      severity_override: CRITICAL
+      channels: [slack, email]
+
+    production:
+      severity_override: HIGH
+      channels: [slack, email]
+
+    monitoring:
+      severity_override: MEDIUM
+      channels: [slack]
+
+  # Route by DAG ID pattern
+  by_dag_pattern:
+    - pattern: "^sample_batch_ingestion$"
+      channels: [slack, email]
+      severity_override: HIGH
+
+    - pattern: "^dbt_transform$"
+      channels: [slack, email]
+      severity_override: HIGH
+
+    - pattern: "^data_quality_checks$"
+      channels: [slack, email]
+      severity_override: CRITICAL
+
+# Alert suppression rules
+suppression:
+  # Don't alert on retries, only final failures
+  suppress_retries: true
+
+  # Suppress duplicate alerts within time window
+  deduplication_window_minutes: 15
+
+  # Tasks to exclude from alerting
+  excluded_tasks: []
+
+  # DAGs to exclude from alerting
+  excluded_dags:
+    - example_hello_world
+    - example_monitoring
+
+  # Time-based suppression (maintenance windows)
+  maintenance_windows: []
+  #   - name: "Weekly maintenance"
+  #     cron: "0 2 * * 0"  # Sundays at 2 AM
+  #     duration_minutes: 120
+
+# Alert thresholds
+thresholds:
+  # Task failure alerting
+  task_failure:
+    # Alert on first failure or after N retries
+    alert_on_first_failure: false
+    alert_after_retries: 2
+
+  # Data freshness
+  data_freshness:
+    # Hours before considering data stale
+    raw_layer_hours: 24
+    staging_layer_hours: 24
+    marts_layer_hours: 48
+
+  # SLA monitoring
+  sla:
+    # Default SLA (can be overridden per DAG)
+    default_completion_hours: 4
+    alert_at_percent: 80  # Alert when 80% of SLA time elapsed
+
+  # Data quality
+  data_quality:
+    # Minimum success rate before alerting
+    min_success_rate_percent: 90
+
+  # Platform health
+  platform_health:
+    scheduler_heartbeat_max_age_minutes: 5
+    max_queued_tasks: 100
+    task_failure_rate_threshold_percent: 10
+    min_health_score: 70
+
+# Alert aggregation
+aggregation:
+  enabled: true
+  window_minutes: 5
+  max_alerts_per_window: 10
+  # If more than max_alerts_per_window in window, send summary instead
+  summary_template: "alert_summary"

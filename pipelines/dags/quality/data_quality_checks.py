@@ -45,7 +45,11 @@ GE_ROOT_DIR = "/opt/airflow/data-quality/great_expectations"
 
 
 def _on_failure_callback(context: Dict[str, Any]) -> None:
-    """Handle task failure by logging alert information."""
+    """Handle data quality check failure with alerting.
+
+    Sends notifications via Slack and email using the alerting system,
+    including validation failure details and affected datasets.
+    """
     dag_id = context["dag"].dag_id
     task_id = context["task_instance"].task_id
     execution_date = context["execution_date"]
@@ -58,6 +62,47 @@ def _on_failure_callback(context: Dict[str, Any]) -> None:
         f"  Execution Date: {execution_date}\n"
         f"  Error: {exception}"
     )
+
+    try:
+        from utils.alerting import (
+            format_task_failure_alert,
+            send_alert,
+            AlertSeverity,
+        )
+
+        # Format and send alert
+        alert_data = format_task_failure_alert(context)
+
+        # Add data quality specific context
+        layer_mapping = {
+            "validate_raw_layer": "Raw/Bronze",
+            "validate_staging_layer": "Staging/Silver",
+            "validate_marts_layer": "Marts/Gold",
+        }
+        if task_id in layer_mapping:
+            alert_data["fields"].append({
+                "title": "Data Layer",
+                "value": layer_mapping[task_id],
+                "short": True,
+            })
+
+        # Query for unacknowledged alerts count
+        ti = context.get("task_instance")
+        if ti:
+            validation_results = ti.xcom_pull(task_ids=task_id, key="validation_results")
+            if validation_results:
+                alert_data["fields"].append({
+                    "title": "Validation Results",
+                    "value": f"{len(validation_results)} suite(s) checked",
+                    "short": True,
+                })
+
+        # Data quality failures are critical
+        alert_data["severity"] = AlertSeverity.CRITICAL
+
+        send_alert(alert_data)
+    except Exception as e:
+        print(f"Warning: Failed to send failure alert: {e}")
 
 
 def _decide_validation_scope(**context) -> List[str]:
