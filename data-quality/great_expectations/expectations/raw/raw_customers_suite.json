@@ -1,0 +1,190 @@
+{
+  "expectation_suite_name": "raw_customers_suite",
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "data_asset_name": "raw_customers",
+    "data_layer": "bronze",
+    "description": "Expectation suite for validating raw customer data in the Bronze layer",
+    "owner": "data-platform-team",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_columns_to_match_set",
+      "kwargs": {
+        "column_set": [
+          "customer_id",
+          "name",
+          "email",
+          "country",
+          "created_at"
+        ],
+        "exact_match": false
+      },
+      "meta": {
+        "notes": "Validates that all required columns are present in the raw customer data"
+      }
+    },
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Ensures the dataset is not empty"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {
+        "notes": "Customer ID is the primary key"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {
+        "notes": "Customer ID must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {
+        "notes": "Customer IDs must be unique"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "customer_id",
+        "regex": "^CUST-\\d+$"
+      },
+      "meta": {
+        "notes": "Customer ID should follow pattern CUST-NNNN"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "name"
+      },
+      "meta": {
+        "notes": "Customer name is required"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "name"
+      },
+      "meta": {
+        "notes": "Customer name must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "name",
+        "min_value": 1,
+        "max_value": 255
+      },
+      "meta": {
+        "notes": "Name should be between 1 and 255 characters"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "email"
+      },
+      "meta": {
+        "notes": "Customer email is required for communication"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "email"
+      },
+      "meta": {
+        "notes": "Email must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "email",
+        "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      },
+      "meta": {
+        "notes": "Email should be in valid email format"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "email"
+      },
+      "meta": {
+        "notes": "Customer emails should be unique"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "country"
+      },
+      "meta": {
+        "notes": "Country is required for regional analysis"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "country"
+      },
+      "meta": {
+        "notes": "Country must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "country",
+        "min_value": 2,
+        "max_value": 100
+      },
+      "meta": {
+        "notes": "Country should be a valid country name or code"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "created_at"
+      },
+      "meta": {
+        "notes": "Created timestamp is required for auditing"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "created_at"
+      },
+      "meta": {
+        "notes": "Created timestamp must never be null"
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

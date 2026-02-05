@@ -1,0 +1,89 @@
+# Full Pipeline Validation Checkpoint
+# Comprehensive validation across all data layers (Bronze, Silver, Gold)
+
+name: full_pipeline_checkpoint
+config_version: 1.0
+
+template_name: null
+module_name: great_expectations.checkpoint
+class_name: Checkpoint
+
+run_name_template: "full_pipeline_validation_%Y%m%d_%H%M%S"
+
+expectation_suite_name: null
+
+action_list:
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
+
+  - name: update_data_docs
+    action:
+      class_name: UpdateDataDocsAction
+      site_names:
+        - local_site
+        - minio_site
+
+  # Log validation results to PostgreSQL for reporting
+  - name: log_to_postgres
+    action:
+      class_name: PostgresLogValidationAction
+      module_name: plugins.validation_store
+      postgres_conn_id: postgres_default
+      schema: data_platform
+      table: validation_results
+
+evaluation_parameters: {}
+runtime_configuration: {}
+
+validations:
+  # Raw/Bronze layer
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: raw.transactions
+    expectation_suite_name: raw/raw_transactions_suite
+
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: raw.customers
+    expectation_suite_name: raw/raw_customers_suite
+
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: raw.products
+    expectation_suite_name: raw/raw_products_suite
+
+  # Staging/Silver layer
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: staging.stg_transactions
+    expectation_suite_name: curated/staging_transactions_suite
+
+  # Marts/Gold layer
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: marts.mart_customer_analytics
+    expectation_suite_name: curated/mart_customer_analytics_suite
+
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: marts.mart_product_analytics
+    expectation_suite_name: curated/mart_product_analytics_suite
+
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: marts.mart_daily_summary
+    expectation_suite_name: curated/mart_daily_summary_suite
+
+profilers: []

@@ -1,0 +1,76 @@
+# Raw Data Validation Checkpoint
+# Validates incoming data in the Bronze layer before transformation
+
+name: raw_data_checkpoint
+config_version: 1.0
+
+# Template for generating batch requests dynamically
+template_name: null
+module_name: great_expectations.checkpoint
+class_name: Checkpoint
+
+# Run name template for identification
+run_name_template: "raw_validation_%Y%m%d_%H%M%S"
+
+# Expectation suite and batch configurations
+expectation_suite_name: null
+
+# Action list defines what happens after validation
+action_list:
+  # Store validation results
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+
+  # Store evaluation parameters for cross-validation
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
+
+  # Update Data Docs with results
+  - name: update_data_docs
+    action:
+      class_name: UpdateDataDocsAction
+      site_names:
+        - local_site
+
+  # Log validation results to PostgreSQL for reporting
+  - name: log_to_postgres
+    action:
+      class_name: PostgresLogValidationAction
+      module_name: plugins.validation_store
+      postgres_conn_id: postgres_default
+      schema: data_platform
+      table: validation_results
+
+# Evaluation parameters for dynamic expectations
+evaluation_parameters: {}
+
+# Runtime configuration
+runtime_configuration: {}
+
+# Validations to run (multiple datasets/suites)
+validations:
+  # Validate raw transactions
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: raw.transactions
+    expectation_suite_name: raw/raw_transactions_suite
+
+  # Validate raw customers
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: raw.customers
+    expectation_suite_name: raw/raw_customers_suite
+
+  # Validate raw products
+  - batch_request:
+      datasource_name: postgres_datasource
+      data_connector_name: default_inferred_connector
+      data_asset_name: raw.products
+    expectation_suite_name: raw/raw_products_suite
+
+# Profilers for automatic expectation generation
+profilers: []

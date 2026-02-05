@@ -1,0 +1,11 @@
+# Great Expectations .gitignore
+
+# Uncommitted directory contains local-only files
+uncommitted/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Jupyter checkpoints
+.ipynb_checkpoints/

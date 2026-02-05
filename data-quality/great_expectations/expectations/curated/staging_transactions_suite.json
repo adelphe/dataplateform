@@ -1,0 +1,167 @@
+{
+  "expectation_suite_name": "staging_transactions_suite",
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "data_asset_name": "stg_transactions",
+    "data_layer": "silver",
+    "description": "Expectation suite for validating staged transaction data after cleaning and standardization",
+    "owner": "data-platform-team",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_columns_to_match_ordered_list",
+      "kwargs": {
+        "column_list": [
+          "transaction_id",
+          "customer_id",
+          "product_id",
+          "amount",
+          "currency",
+          "quantity",
+          "transaction_timestamp",
+          "loaded_at"
+        ]
+      },
+      "meta": {
+        "notes": "Staging table should have exact column order after transformation"
+      }
+    },
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Ensures the dataset is not empty after transformation"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {
+        "notes": "Transaction ID must never be null after staging"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {
+        "notes": "Transaction IDs must be unique after deduplication"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {
+        "notes": "Customer ID must never be null - invalid records should be filtered"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID must never be null - invalid records should be filtered"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "amount"
+      },
+      "meta": {
+        "notes": "Amount must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "amount",
+        "min_value": 0.01,
+        "max_value": null,
+        "strict_min": false
+      },
+      "meta": {
+        "notes": "Amount must be positive after filtering invalid records"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "currency"
+      },
+      "meta": {
+        "notes": "Currency must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "currency",
+        "value_set": ["USD", "EUR", "GBP"]
+      },
+      "meta": {
+        "notes": "Currency must be uppercase standardized format"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "quantity"
+      },
+      "meta": {
+        "notes": "Quantity must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "quantity",
+        "min_value": 1,
+        "max_value": null,
+        "strict_min": false
+      },
+      "meta": {
+        "notes": "Quantity must be positive after filtering invalid records"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "transaction_timestamp"
+      },
+      "meta": {
+        "notes": "Transaction timestamp must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_of_type",
+      "kwargs": {
+        "column": "transaction_timestamp",
+        "type_": "TIMESTAMP"
+      },
+      "meta": {
+        "notes": "Transaction timestamp should be properly typed"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "loaded_at"
+      },
+      "meta": {
+        "notes": "Loaded timestamp should be populated by transformation"
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

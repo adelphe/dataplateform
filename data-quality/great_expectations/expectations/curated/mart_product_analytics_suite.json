@@ -1,0 +1,131 @@
+{
+  "expectation_suite_name": "mart_product_analytics_suite",
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "data_asset_name": "mart_product_analytics",
+    "data_layer": "gold",
+    "description": "Expectation suite for validating product analytics mart for downstream consumption",
+    "owner": "data-platform-team",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Mart table must have data for analytics"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID is the primary key"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Each product should appear exactly once"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "total_units_sold"
+      },
+      "meta": {
+        "notes": "Total units sold is a key metric"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "total_units_sold",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Units sold must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "total_revenue"
+      },
+      "meta": {
+        "notes": "Total revenue per product"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "total_revenue",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Revenue must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "unique_customers"
+      },
+      "meta": {
+        "notes": "Number of unique customers who purchased"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "unique_customers",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Customer count must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "avg_transaction_amount"
+      },
+      "meta": {
+        "notes": "Average transaction amount per product"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "avg_transaction_amount",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Average amount must be non-negative"
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

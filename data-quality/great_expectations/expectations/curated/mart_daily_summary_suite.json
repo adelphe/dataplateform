@@ -1,0 +1,151 @@
+{
+  "expectation_suite_name": "mart_daily_summary_suite",
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "data_asset_name": "mart_daily_summary",
+    "data_layer": "gold",
+    "description": "Expectation suite for validating daily business summary mart",
+    "owner": "data-platform-team",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Daily summary must have at least one day of data"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "transaction_date"
+      },
+      "meta": {
+        "notes": "Transaction date is the primary key"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "transaction_date"
+      },
+      "meta": {
+        "notes": "Transaction date must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "transaction_date"
+      },
+      "meta": {
+        "notes": "Each date should appear exactly once"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "total_transactions"
+      },
+      "meta": {
+        "notes": "Total transactions for the day"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "total_transactions",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Transaction count must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "total_revenue"
+      },
+      "meta": {
+        "notes": "Total daily revenue"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "total_revenue",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Revenue must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "unique_customers"
+      },
+      "meta": {
+        "notes": "Unique customers per day"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "unique_customers",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Customer count must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "unique_products"
+      },
+      "meta": {
+        "notes": "Unique products sold per day"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "unique_products",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Product count must be non-negative"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "avg_order_value"
+      },
+      "meta": {
+        "notes": "Average order value for the day"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "avg_order_value",
+        "min_value": 0,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Average order value must be non-negative"
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

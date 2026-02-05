@@ -1,0 +1,233 @@
+{
+  "expectation_suite_name": "raw_transactions_suite",
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "data_asset_name": "raw_transactions",
+    "data_layer": "bronze",
+    "description": "Expectation suite for validating raw transaction data in the Bronze layer",
+    "owner": "data-platform-team",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_columns_to_match_set",
+      "kwargs": {
+        "column_set": [
+          "transaction_id",
+          "customer_id",
+          "product_id",
+          "amount",
+          "currency",
+          "quantity",
+          "timestamp"
+        ],
+        "exact_match": false
+      },
+      "meta": {
+        "notes": "Validates that all required columns are present in the raw transaction data"
+      }
+    },
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Ensures the dataset is not empty"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {
+        "notes": "Transaction ID is required for tracking"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {
+        "notes": "Transaction ID must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "transaction_id"
+      },
+      "meta": {
+        "notes": "Transaction IDs must be unique within the dataset"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {
+        "notes": "Customer ID is required for customer attribution"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "customer_id"
+      },
+      "meta": {
+        "notes": "Customer ID must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "customer_id",
+        "regex": "^CUST-\\d+$"
+      },
+      "meta": {
+        "notes": "Customer ID should follow pattern CUST-NNNN"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID is required for product attribution"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "product_id",
+        "regex": "^PROD-\\d+$"
+      },
+      "meta": {
+        "notes": "Product ID should follow pattern PROD-NNNN"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "amount"
+      },
+      "meta": {
+        "notes": "Amount is required for financial tracking"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "amount"
+      },
+      "meta": {
+        "notes": "Amount must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "amount",
+        "min_value": 0.01,
+        "max_value": 1000000,
+        "strict_min": false,
+        "strict_max": false
+      },
+      "meta": {
+        "notes": "Amount should be positive and within reasonable bounds"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "currency"
+      },
+      "meta": {
+        "notes": "Currency is required for multi-currency support"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "currency"
+      },
+      "meta": {
+        "notes": "Currency must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "currency",
+        "value_set": ["USD", "EUR", "GBP", "usd", "eur", "gbp"]
+      },
+      "meta": {
+        "notes": "Currency must be one of the supported currencies (case insensitive)"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "quantity"
+      },
+      "meta": {
+        "notes": "Quantity is required for inventory tracking"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "quantity"
+      },
+      "meta": {
+        "notes": "Quantity must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "quantity",
+        "min_value": 1,
+        "max_value": 10000,
+        "strict_min": false,
+        "strict_max": false
+      },
+      "meta": {
+        "notes": "Quantity should be positive and within reasonable bounds"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "timestamp"
+      },
+      "meta": {
+        "notes": "Timestamp is required for time-series analysis"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "timestamp"
+      },
+      "meta": {
+        "notes": "Timestamp must never be null"
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

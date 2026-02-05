@@ -1,0 +1,183 @@
+{
+  "expectation_suite_name": "raw_products_suite",
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "data_asset_name": "raw_products",
+    "data_layer": "bronze",
+    "description": "Expectation suite for validating raw product data in the Bronze layer",
+    "owner": "data-platform-team",
+    "created_at": "2024-01-01T00:00:00Z"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_columns_to_match_set",
+      "kwargs": {
+        "column_set": [
+          "product_id",
+          "name",
+          "category",
+          "price",
+          "created_at"
+        ],
+        "exact_match": false
+      },
+      "meta": {
+        "notes": "Validates that all required columns are present in the raw product data"
+      }
+    },
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Ensures the dataset is not empty"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID is the primary key"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product ID must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": {
+        "column": "product_id"
+      },
+      "meta": {
+        "notes": "Product IDs must be unique"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "product_id",
+        "regex": "^PROD-\\d+$"
+      },
+      "meta": {
+        "notes": "Product ID should follow pattern PROD-NNNN"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "name"
+      },
+      "meta": {
+        "notes": "Product name is required"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "name"
+      },
+      "meta": {
+        "notes": "Product name must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "name",
+        "min_value": 1,
+        "max_value": 255
+      },
+      "meta": {
+        "notes": "Name should be between 1 and 255 characters"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "category"
+      },
+      "meta": {
+        "notes": "Product category is required for classification"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "category"
+      },
+      "meta": {
+        "notes": "Category must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "category",
+        "value_set": ["Electronics", "Clothing", "Food", "Books", "Home", "Sports", "Toys", "Other"]
+      },
+      "meta": {
+        "notes": "Category must be one of the predefined values"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "price"
+      },
+      "meta": {
+        "notes": "Product price is required for sales calculations"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "price"
+      },
+      "meta": {
+        "notes": "Price must never be null"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "price",
+        "min_value": 0.01,
+        "max_value": 100000,
+        "strict_min": false,
+        "strict_max": false
+      },
+      "meta": {
+        "notes": "Price should be positive and within reasonable bounds"
+      }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": {
+        "column": "created_at"
+      },
+      "meta": {
+        "notes": "Created timestamp is required for auditing"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "created_at"
+      },
+      "meta": {
+        "notes": "Created timestamp must never be null"
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}
