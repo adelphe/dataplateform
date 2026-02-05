@@ -12,8 +12,14 @@ A modern data platform monorepo with orchestration, transformations, data qualit
 │   │   ├── requirements.txt
 │   │   ├── init-connections.sh
 │   │   └── airflow.cfg
-│   └── minio/               # MinIO bucket initialization
-│       └── init-buckets.sh
+│   ├── minio/               # MinIO bucket initialization
+│   │   └── init-buckets.sh
+│   └── superset/            # Superset BI initialization
+│       ├── init-superset.sh
+│       ├── setup_database.py
+│       ├── setup_roles.py
+│       ├── import_dashboards.py
+│       └── dashboards/
 ├── pipelines/               # Airflow DAGs, operators, and pipeline logic
 │   ├── __init__.py
 │   ├── dags/
@@ -109,6 +115,46 @@ make airflow-test-dag DAG=example_hello_world      # Test a specific DAG
 make airflow-connections                           # List configured connections
 make airflow-reset                                 # Reset Airflow DB (dev only)
 ```
+
+### Superset Commands
+
+```bash
+make superset-logs                                 # Tail Superset logs
+make superset-shell                                # Access Superset container shell
+make superset-init                                 # Re-run initialization scripts
+make superset-reset                                # Reset and reinitialize Superset
+make superset-console                              # Show access URL and credentials
+```
+
+## Superset BI Layer
+
+Apache Superset provides the business intelligence and visualization layer for the data platform. It connects directly to the PostgreSQL data warehouse and visualizes the dbt mart models.
+
+### Pre-configured Dashboards
+
+| Dashboard | Description | Key Metrics |
+|-----------|-------------|-------------|
+| Customer Insights | Customer behavior and lifetime value | Total customers, avg order value, top spenders |
+| Product Performance | Product sales and revenue analysis | Revenue by product, category breakdown, units sold |
+| Daily Operations | Operational monitoring | Daily revenue, transaction volume, trends |
+
+### Available Datasets
+
+| Dataset | Source | Description |
+|---------|--------|-------------|
+| mart_customer_analytics | marts schema | Customer metrics and LTV |
+| mart_product_analytics | marts schema | Product sales data |
+| mart_daily_summary | marts schema | Daily aggregated metrics |
+
+### User Roles
+
+| Role | Access Level |
+|------|--------------|
+| Admin (admin/admin) | Full access to all features |
+| Analyst (analyst/analyst123) | Create/edit dashboards, SQL Lab access |
+| Viewer (viewer/viewer123) | Read-only dashboard access |
+
+See [docs/superset-guide.md](docs/superset-guide.md) for detailed documentation.
 
 ## Airflow Orchestration
 

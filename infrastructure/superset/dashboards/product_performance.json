@@ -1,0 +1,200 @@
+{
+  "dashboard_title": "Product Performance",
+  "description": "Analytics dashboard for product revenue, sales, and performance metrics",
+  "slug": "product-performance",
+  "position_json": {
+    "DASHBOARD_VERSION_KEY": "v2",
+    "ROOT_ID": {
+      "type": "ROOT",
+      "id": "ROOT_ID",
+      "children": ["GRID_ID"]
+    },
+    "GRID_ID": {
+      "type": "GRID",
+      "id": "GRID_ID",
+      "children": ["ROW-1", "ROW-2"],
+      "parents": ["ROOT_ID"]
+    },
+    "ROW-1": {
+      "type": "ROW",
+      "id": "ROW-1",
+      "children": ["CHART-BAR-1", "CHART-PIE-1"],
+      "meta": {
+        "background": "BACKGROUND_TRANSPARENT"
+      }
+    },
+    "ROW-2": {
+      "type": "ROW",
+      "id": "ROW-2",
+      "children": ["CHART-TABLE-1"],
+      "meta": {
+        "background": "BACKGROUND_TRANSPARENT"
+      }
+    },
+    "CHART-BAR-1": {
+      "type": "CHART",
+      "id": "CHART-BAR-1",
+      "meta": {
+        "width": 6,
+        "height": 50,
+        "chartId": null,
+        "sliceName": "Top Products by Revenue"
+      }
+    },
+    "CHART-PIE-1": {
+      "type": "CHART",
+      "id": "CHART-PIE-1",
+      "meta": {
+        "width": 6,
+        "height": 50,
+        "chartId": null,
+        "sliceName": "Revenue by Category"
+      }
+    },
+    "CHART-TABLE-1": {
+      "type": "CHART",
+      "id": "CHART-TABLE-1",
+      "meta": {
+        "width": 12,
+        "height": 60,
+        "chartId": null,
+        "sliceName": "Product Performance Table"
+      }
+    }
+  },
+  "metadata": {
+    "color_scheme": "supersetColors",
+    "refresh_frequency": 0,
+    "expanded_slices": {},
+    "label_colors": {},
+    "shared_label_colors": {},
+    "cross_filters_enabled": true,
+    "native_filter_configuration": []
+  },
+  "charts": [
+    {
+      "slice_name": "Top Products by Revenue",
+      "viz_type": "echarts_bar",
+      "datasource": "mart_product_analytics",
+      "params": {
+        "viz_type": "echarts_bar",
+        "x_axis": "product_name",
+        "metrics": [
+          {
+            "label": "total_revenue",
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(total_revenue)"
+          }
+        ],
+        "groupby": ["product_name"],
+        "row_limit": 10,
+        "order_desc": true,
+        "color_scheme": "supersetColors",
+        "show_legend": false,
+        "orientation": "horizontal",
+        "x_axis_title": "Revenue ($)",
+        "y_axis_title": "Product"
+      }
+    },
+    {
+      "slice_name": "Revenue by Category",
+      "viz_type": "pie",
+      "datasource": "mart_product_analytics",
+      "params": {
+        "viz_type": "pie",
+        "metric": {
+          "label": "total_revenue",
+          "expressionType": "SQL",
+          "sqlExpression": "SUM(total_revenue)"
+        },
+        "groupby": ["category"],
+        "color_scheme": "supersetColors",
+        "show_legend": true,
+        "show_labels": true,
+        "label_type": "key_percent",
+        "donut": false,
+        "innerRadius": 0,
+        "outerRadius": 80,
+        "label_line": true
+      }
+    },
+    {
+      "slice_name": "Product Performance Table",
+      "viz_type": "table",
+      "datasource": "mart_product_analytics",
+      "params": {
+        "viz_type": "table",
+        "query_mode": "aggregate",
+        "groupby": ["product_name", "category"],
+        "metrics": [
+          {
+            "label": "total_revenue",
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(total_revenue)"
+          },
+          {
+            "label": "units_sold",
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(total_units_sold)"
+          },
+          {
+            "label": "unique_customers",
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(unique_customers)"
+          }
+        ],
+        "row_limit": 100,
+        "order_desc": true,
+        "include_search": true,
+        "page_length": 25,
+        "table_timestamp_format": "%Y-%m-%d",
+        "show_cell_bars": true,
+        "color_pn": true
+      }
+    },
+    {
+      "slice_name": "Unique Customers per Product",
+      "viz_type": "echarts_bar",
+      "datasource": "mart_product_analytics",
+      "params": {
+        "viz_type": "echarts_bar",
+        "x_axis": "product_name",
+        "metrics": [
+          {
+            "label": "unique_customers",
+            "expressionType": "SQL",
+            "sqlExpression": "SUM(unique_customers)"
+          }
+        ],
+        "groupby": ["product_name"],
+        "row_limit": 10,
+        "order_desc": true,
+        "color_scheme": "bnbColors",
+        "show_legend": false,
+        "x_axis_title": "Product",
+        "y_axis_title": "Unique Customers"
+      }
+    }
+  ],
+  "dataset": {
+    "table_name": "mart_product_analytics",
+    "schema": "marts",
+    "database": "postgres_warehouse",
+    "description": "Product analytics mart with revenue, units sold, and performance metrics",
+    "columns": [
+      {"column_name": "product_id", "type": "INTEGER", "is_dttm": false, "description": "Unique product identifier"},
+      {"column_name": "product_name", "type": "VARCHAR", "is_dttm": false, "description": "Product name"},
+      {"column_name": "category", "type": "VARCHAR", "is_dttm": false, "description": "Product category"},
+      {"column_name": "total_units_sold", "type": "INTEGER", "is_dttm": false, "description": "Total units sold"},
+      {"column_name": "total_revenue", "type": "NUMERIC", "is_dttm": false, "description": "Total revenue generated"},
+      {"column_name": "unique_customers", "type": "INTEGER", "is_dttm": false, "description": "Number of unique customers who purchased"},
+      {"column_name": "avg_unit_price", "type": "NUMERIC", "is_dttm": false, "description": "Average price per unit"}
+    ],
+    "metrics": [
+      {"metric_name": "total_products", "expression": "COUNT(DISTINCT product_id)", "description": "Count of unique products"},
+      {"metric_name": "sum_revenue", "expression": "SUM(total_revenue)", "description": "Sum of all product revenue"},
+      {"metric_name": "sum_units_sold", "expression": "SUM(total_units_sold)", "description": "Sum of all units sold"},
+      {"metric_name": "avg_revenue_per_product", "expression": "AVG(total_revenue)", "description": "Average revenue per product"}
+    ]
+  }
+}

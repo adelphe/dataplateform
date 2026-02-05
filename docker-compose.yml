@@ -61,6 +61,7 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init_superset_db.sql:/docker-entrypoint-initdb.d/00_init_superset_db.sql
       - ./infrastructure/postgres/init_ingestion_tables.sql:/docker-entrypoint-initdb.d/01_init_ingestion_tables.sql
       - ./infrastructure/postgres/init_dbt_schemas.sql:/docker-entrypoint-initdb.d/02_init_dbt_schemas.sql
       - ./data-quality/init_validation_tables.sql:/docker-entrypoint-initdb.d/03_init_validation_tables.sql
@@ -167,30 +168,35 @@ services:
     image: apache/superset:3.1.3
     environment:
       SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-change-me-in-production}
+      # Superset metadata database (PostgreSQL instead of default SQLite)
+      SUPERSET_DATABASE_URI: ${SUPERSET_DATABASE_URI:-postgresql+psycopg2://${POSTGRES_USER:-airflow}:${POSTGRES_PASSWORD:-airflow}@postgres:5432/${SUPERSET_DB:-superset}}
       SUPERSET_ADMIN_USERNAME: ${SUPERSET_ADMIN_USER:-admin}
       SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
       SUPERSET_ADMIN_EMAIL: ${SUPERSET_ADMIN_EMAIL:-admin@example.com}
       SUPERSET_ADMIN_FIRSTNAME: Admin
       SUPERSET_ADMIN_LASTNAME: User
+      # Database connection for warehouse
+      POSTGRES_USER: ${POSTGRES_USER:-airflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+      POSTGRES_DB: ${POSTGRES_DB:-airflow}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
     ports:
       - "${SUPERSET_PORT:-8088}:8088"
+    volumes:
+      - ./infrastructure/superset:/app/superset_init
+      - ./infrastructure/superset/docker-entrypoint.sh:/app/docker-entrypoint.sh
     entrypoint: /bin/bash
     command:
-      - -c
-      - |
-        pip install psycopg2-binary --quiet
-        superset db upgrade
-        superset fab create-admin \
-          --username "$${SUPERSET_ADMIN_USERNAME}" \
-          --password "$${SUPERSET_ADMIN_PASSWORD}" \
-          --firstname "$${SUPERSET_ADMIN_FIRSTNAME}" \
-          --lastname "$${SUPERSET_ADMIN_LASTNAME}" \
-          --email "$${SUPERSET_ADMIN_EMAIL}" || true
-        superset init
-        superset run -h 0.0.0.0 -p 8088
+      - /app/docker-entrypoint.sh
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 volumes:
   postgres-data:

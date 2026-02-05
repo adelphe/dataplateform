@@ -1,4 +1,4 @@
-.PHONY: setup start stop restart status test logs clean help airflow-cli airflow-logs airflow-test-dag airflow-connections airflow-reset minio-buckets minio-upload-sample minio-verify minio-console
+.PHONY: setup start stop restart status test logs clean help airflow-cli airflow-logs airflow-test-dag airflow-connections airflow-reset minio-buckets minio-upload-sample minio-verify minio-console superset-logs superset-shell superset-init superset-reset superset-console
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -79,3 +79,30 @@ minio-verify: ## Verify MinIO bucket structure and connectivity
 
 minio-console: ## Show MinIO console URL
 	@echo "MinIO Console: http://localhost:9001 (minio / minio123)"
+
+# ==============================
+# Superset Commands
+# ==============================
+
+superset-logs: ## Tail Superset container logs
+	docker compose logs -f superset
+
+superset-shell: ## Access Superset container shell for debugging
+	docker compose exec superset /bin/bash
+
+superset-init: ## Re-run Superset initialization scripts
+	docker compose exec superset python /app/superset_init/setup_database.py
+	docker compose exec superset python /app/superset_init/setup_roles.py
+	docker compose exec superset python /app/superset_init/import_dashboards.py
+
+superset-reset: ## Reset Superset database and re-initialize
+	docker compose stop superset
+	docker compose rm -f superset
+	docker compose up -d superset
+	@echo "Superset is restarting with fresh initialization..."
+
+superset-console: ## Show Superset console URL and credentials
+	@echo "Superset Dashboard: http://localhost:8088"
+	@echo "Admin: admin / admin"
+	@echo "Analyst: analyst / analyst123"
+	@echo "Viewer: viewer / viewer123"
