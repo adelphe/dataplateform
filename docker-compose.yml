@@ -26,6 +26,13 @@ x-airflow-common: &airflow-common
     POSTGRES_USER: ${POSTGRES_USER:-airflow}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
     POSTGRES_DB: ${POSTGRES_DB:-airflow}
+    # Great Expectations configuration
+    POSTGRES_CONNECTION_STRING: ${POSTGRES_CONNECTION_STRING:-postgresql+psycopg2://airflow:airflow@postgres:5432/airflow}
+    BRONZE_DATA_PATH: ${BRONZE_DATA_PATH:-/opt/airflow/data-quality/sample_data}
+    MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+    MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio}
+    MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio123}
+    DATA_DOCS_BUCKET: ${DATA_DOCS_BUCKET:-data-docs}
   volumes:
     - ./pipelines/dags:/opt/airflow/dags
     - ./pipelines/plugins:/opt/airflow/plugins
@@ -37,6 +44,7 @@ x-airflow-common: &airflow-common
     - ./pipelines/loaders:/opt/airflow/loaders
     - ./transformations:/opt/airflow/transformations
     - ./scripts:/opt/airflow/scripts
+    - ./data-quality:/opt/airflow/data-quality
   depends_on:
     postgres:
       condition: service_healthy
@@ -55,6 +63,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init_ingestion_tables.sql:/docker-entrypoint-initdb.d/01_init_ingestion_tables.sql
       - ./infrastructure/postgres/init_dbt_schemas.sql:/docker-entrypoint-initdb.d/02_init_dbt_schemas.sql
+      - ./data-quality/init_validation_tables.sql:/docker-entrypoint-initdb.d/03_init_validation_tables.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow}"]
       interval: 10s
@@ -124,6 +133,7 @@ services:
       - ./transformations:/opt/airflow/transformations
       - ./infrastructure/airflow/init-connections.sh:/opt/airflow/scripts/init-connections.sh
       - ./scripts:/opt/airflow/scripts/data
+      - ./data-quality:/opt/airflow/data-quality
     depends_on:
       postgres:
         condition: service_healthy
