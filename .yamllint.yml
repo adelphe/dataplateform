@@ -1,0 +1,27 @@
+---
+extends: default
+
+rules:
+  line-length:
+    max: 150
+    level: warning
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  document-start: disable
+  empty-lines:
+    max: 2
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+ignore: |
+  .github/
+  transformations/dbt_project/dbt_packages/
+  transformations/dbt_project/target/
+  node_modules/
+  .venv/

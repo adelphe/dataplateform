@@ -1,0 +1,10 @@
+# Ignore dbt packages
+transformations/dbt_project/dbt_packages/
+transformations/dbt_project/target/
+transformations/dbt_project/logs/
+
+# Ignore compiled SQL
+transformations/dbt_project/target/**/*.sql
+
+# Ignore test fixtures
+tests/**/*.sql

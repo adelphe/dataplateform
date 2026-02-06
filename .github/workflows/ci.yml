@@ -1,0 +1,503 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  PYTHON_VERSION: '3.11'
+  DBT_VERSION: '1.7.0'
+  AIRFLOW_VERSION: '2.8.0'
+
+jobs:
+  lint:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install linting dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ruff black isort mypy sqlfluff sqlfluff-templater-dbt dbt-postgres yamllint
+
+      - name: Run ruff (Python linting)
+        run: ruff check pipelines/ --output-format=github
+
+      - name: Run black (formatting check)
+        run: black --check pipelines/ tests/
+
+      - name: Run isort (import sorting check)
+        run: isort --check-only pipelines/ tests/
+
+      - name: Run yamllint
+        run: yamllint -c .yamllint.yml .github/ pipelines/config/ || true
+
+      - name: Run sqlfluff (SQL linting)
+        run: |
+          sqlfluff lint transformations/dbt_project/models/ \
+            --dialect postgres \
+            --config transformations/dbt_project/.sqlfluff \
+            --format github-annotation
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ \
+            -v \
+            --tb=short \
+            --cov=pipelines \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --junitxml=test-results/unit-tests.xml
+        env:
+          AIRFLOW_HOME: ${{ github.workspace }}/pipelines
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unit-tests
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: test-results/
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: airflow
+          POSTGRES_PASSWORD: airflow
+          POSTGRES_DB: airflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Initialize Airflow database
+        run: |
+          airflow db init
+        env:
+          AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@localhost:5432/airflow
+          AIRFLOW__CORE__EXECUTOR: LocalExecutor
+          AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+          AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/pipelines/dags
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/ \
+            -v \
+            --tb=short \
+            --junitxml=test-results/integration-tests.xml
+        env:
+          AIRFLOW_HOME: ${{ github.workspace }}/pipelines
+          AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@localhost:5432/airflow
+          AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/pipelines/dags
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: test-results/
+
+  dbt-tests:
+    name: dbt Tests & Validation
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: dbt
+          POSTGRES_PASSWORD: dbt
+          POSTGRES_DB: datawarehouse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dbt
+        run: |
+          pip install --upgrade pip
+          pip install dbt-postgres==${{ env.DBT_VERSION }}
+
+      - name: Set up dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          data_platform:
+            target: ci
+            outputs:
+              ci:
+                type: postgres
+                host: localhost
+                port: 5432
+                user: dbt
+                password: dbt
+                dbname: datawarehouse
+                schema: public
+                threads: 4
+          EOF
+
+      - name: Install dbt dependencies
+        run: |
+          cd transformations/dbt_project
+          dbt deps
+
+      - name: Validate dbt project
+        run: |
+          cd transformations/dbt_project
+          dbt debug
+          dbt parse
+
+      - name: Run dbt seed
+        run: |
+          cd transformations/dbt_project
+          dbt seed --target ci
+
+      - name: Run dbt models (dry run)
+        run: |
+          cd transformations/dbt_project
+          dbt compile --target ci
+
+      - name: Run dbt tests
+        run: |
+          cd transformations/dbt_project
+          dbt test --target ci
+
+      - name: Generate dbt docs
+        run: |
+          cd transformations/dbt_project
+          dbt docs generate --target ci
+
+      - name: Upload dbt artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-artifacts
+          path: |
+            transformations/dbt_project/target/manifest.json
+            transformations/dbt_project/target/catalog.json
+            transformations/dbt_project/target/run_results.json
+
+  dag-validation:
+    name: DAG Validation
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Airflow
+        run: |
+          pip install --upgrade pip
+          pip install "apache-airflow==${{ env.AIRFLOW_VERSION }}" \
+            --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-${{ env.AIRFLOW_VERSION }}/constraints-${{ env.PYTHON_VERSION }}.txt"
+          pip install apache-airflow-providers-postgres apache-airflow-providers-amazon
+
+      - name: Initialize Airflow
+        run: |
+          airflow db init
+        env:
+          AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+          AIRFLOW__CORE__DAGS_FOLDER: ${{ github.workspace }}/pipelines/dags
+
+      - name: Validate DAG imports
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from airflow.models import DagBag
+          dag_bag = DagBag(dag_folder='pipelines/dags', include_examples=False)
+          if dag_bag.import_errors:
+              print('DAG Import Errors:')
+              for dag_id, error in dag_bag.import_errors.items():
+                  print(f'  {dag_id}: {error}')
+              sys.exit(1)
+          print(f'Successfully loaded {len(dag_bag.dags)} DAGs')
+          for dag_id in dag_bag.dags:
+              print(f'  - {dag_id}')
+          "
+        env:
+          AIRFLOW_HOME: ${{ github.workspace }}/pipelines
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Check DAG integrity
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from airflow.models import DagBag
+          dag_bag = DagBag(dag_folder='pipelines/dags', include_examples=False)
+          errors = []
+          for dag_id, dag in dag_bag.dags.items():
+              # Check for cycles
+              if dag.test_cycle():
+                  errors.append(f'{dag_id}: Contains cycle')
+              # Check for missing dependencies
+              for task in dag.tasks:
+                  for upstream in task.upstream_list:
+                      if upstream not in dag.tasks:
+                          errors.append(f'{dag_id}: Missing upstream task {upstream}')
+          if errors:
+              print('DAG Integrity Errors:')
+              for error in errors:
+                  print(f'  {error}')
+              sys.exit(1)
+          print('All DAGs passed integrity checks')
+          "
+        env:
+          AIRFLOW_HOME: ${{ github.workspace }}/pipelines
+          PYTHONPATH: ${{ github.workspace }}
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety pip-audit
+
+      - name: Run bandit (Python security linter)
+        run: |
+          bandit -r pipelines/ -ll -ii -f json -o bandit-report.json || true
+          bandit -r pipelines/ -ll -ii
+
+      - name: Run safety check (dependency vulnerabilities)
+        run: |
+          safety check -r requirements.txt --json > safety-report.json || true
+          safety check -r requirements.txt || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+
+  build-docker:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [unit-tests, dbt-tests, dag-validation]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/airflow
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Airflow image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infrastructure/airflow/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://airflow-staging.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to staging
+        run: |
+          ./scripts/deploy.sh staging
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://airflow.example.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to production
+        run: |
+          ./scripts/deploy.sh production
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+
+  notify:
+    name: Notify on Completion
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, dbt-tests, dag-validation]
+    if: always()
+    steps:
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "CI/CD Pipeline Failed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*CI/CD Pipeline Failed* :x:\n*Repository:* ${{ github.repository }}\n*Branch:* ${{ github.ref_name }}\n*Commit:* ${{ github.sha }}\n*Author:* ${{ github.actor }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "View Workflow" },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

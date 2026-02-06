@@ -1,0 +1,185 @@
+# Pre-commit hooks configuration
+# Install: pre-commit install
+# Run all: pre-commit run --all-files
+# Update: pre-commit autoupdate
+
+default_language_version:
+  python: python3.11
+
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ['--markdown-linebreak-ext=md']
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+      - id: check-ast
+      - id: debug-statements
+      - id: check-docstring-first
+      - id: name-tests-test
+        args: ['--pytest-test-first']
+        exclude: ^tests/conftest\.py$
+
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: ['--line-length=100']
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ['--profile=black', '--line-length=100']
+
+  # Fast Python linter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        args: ['--fix', '--exit-non-zero-on-fix']
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-requests
+          - types-python-dateutil
+          - boto3-stubs
+        args: ['--ignore-missing-imports', '--no-strict-optional']
+        exclude: ^(tests/|docs/|scripts/)
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.7
+    hooks:
+      - id: bandit
+        args: ['-ll', '-ii']
+        exclude: ^tests/
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-c=.yamllint.yml']
+        exclude: ^(transformations/dbt_project/dbt_packages/|\.github/)
+
+  # SQL linting with sqlfluff
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 2.3.5
+    hooks:
+      - id: sqlfluff-lint
+        args: ['--dialect=postgres', '--config=transformations/dbt_project/.sqlfluff']
+        files: ^transformations/dbt_project/models/.*\.sql$
+        additional_dependencies:
+          - sqlfluff-templater-dbt==2.3.5
+          - dbt-postgres>=1.7.0
+      - id: sqlfluff-fix
+        args: ['--dialect=postgres', '--config=transformations/dbt_project/.sqlfluff']
+        files: ^transformations/dbt_project/models/.*\.sql$
+        additional_dependencies:
+          - sqlfluff-templater-dbt==2.3.5
+          - dbt-postgres>=1.7.0
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args: ['--ignore=DL3008', '--ignore=DL3013']
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: ['--severity=warning']
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix', '--disable=MD013,MD033,MD041']
+
+  # Secrets detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: (\.lock$|\.env\.example$)
+
+  # Commit message linting
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.13.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]
+
+  # dbt project validation
+  - repo: local
+    hooks:
+      - id: dbt-compile
+        name: dbt compile check
+        entry: bash -c 'cd transformations/dbt_project && dbt compile --target ci'
+        language: system
+        files: ^transformations/dbt_project/models/.*\.sql$
+        pass_filenames: false
+        stages: [push]
+
+      - id: dbt-test-compile
+        name: dbt test compilation
+        entry: bash -c 'cd transformations/dbt_project && dbt compile --select test_type:singular --target ci'
+        language: system
+        files: ^transformations/dbt_project/tests/.*\.sql$
+        pass_filenames: false
+        stages: [push]
+
+  # DAG validation
+  - repo: local
+    hooks:
+      - id: airflow-dag-test
+        name: Airflow DAG import test
+        entry: python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from airflow.models import DagBag
+          bag = DagBag(dag_folder='pipelines/dags', include_examples=False)
+          if bag.import_errors:
+              for dag, err in bag.import_errors.items():
+                  print(f'Error in {dag}: {err}')
+              sys.exit(1)
+          print(f'Successfully validated {len(bag.dags)} DAGs')
+          "
+        language: system
+        files: ^pipelines/dags/.*\.py$
+        pass_filenames: false
+        stages: [push]
+
+# CI skip configuration
+ci:
+  autofix_prs: true
+  autoupdate_schedule: weekly
+  skip:
+    - dbt-compile
+    - dbt-test-compile
+    - airflow-dag-test
+    - hadolint-docker

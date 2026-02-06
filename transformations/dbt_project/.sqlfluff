@@ -1,0 +1,85 @@
+[sqlfluff]
+# SQL dialect
+dialect = postgres
+
+# Templater for dbt
+templater = dbt
+
+# Exclude certain rules
+exclude_rules = L031,L034,L016
+
+# Max line length
+max_line_length = 120
+
+# Indentation settings
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = false
+indented_ctes = true
+indented_using_on = true
+template_blocks_indent = true
+
+# Layout rules
+[sqlfluff:layout:type:comma]
+spacing_before = touch
+line_position = trailing
+
+# Capitalization rules
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = lower
+
+# Aliasing rules
+[sqlfluff:rules:aliasing.table]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.column]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.expression]
+allow_scalar = false
+
+# Convention rules
+[sqlfluff:rules:convention.terminator]
+multiline_newline = true
+require_final_semicolon = true
+
+[sqlfluff:rules:convention.blocked_words]
+blocked_words = None
+
+[sqlfluff:rules:convention.select_trailing_comma]
+select_clause_trailing_comma = forbid
+
+# Ambiguous rules
+[sqlfluff:rules:ambiguous.column_references]
+group_by_and_order_by_style = explicit
+
+# References rules
+[sqlfluff:rules:references.consistent]
+single_table_references = consistent
+
+[sqlfluff:rules:references.keywords]
+ignore_words = None
+
+# Structure rules
+[sqlfluff:rules:structure.subquery]
+forbid_subquery_in = both
+
+# dbt templater configuration
+[sqlfluff:templater:dbt]
+project_dir = .
+profiles_dir = .
+profile = data_platform
+target = ci
