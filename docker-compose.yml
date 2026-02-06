@@ -33,6 +33,9 @@ x-airflow-common: &airflow-common
     MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio}
     MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio123}
     DATA_DOCS_BUCKET: ${DATA_DOCS_BUCKET:-data-docs}
+    # OpenMetadata authentication for metadata_sync DAG
+    OPENMETADATA_AUTH_PROVIDER: ${OPENMETADATA_AUTH_PROVIDER:-basic}
+    OPENMETADATA_JWT_TOKEN: ${OPENMETADATA_JWT_TOKEN:-}
   volumes:
     - ./pipelines/dags:/opt/airflow/dags
     - ./pipelines/plugins:/opt/airflow/plugins
@@ -66,6 +69,7 @@ services:
       - ./infrastructure/postgres/init_dbt_schemas.sql:/docker-entrypoint-initdb.d/02_init_dbt_schemas.sql
       - ./data-quality/init_validation_tables.sql:/docker-entrypoint-initdb.d/03_init_validation_tables.sql
       - ./infrastructure/postgres/init_monitoring_tables.sql:/docker-entrypoint-initdb.d/04_init_monitoring_tables.sql
+      - ./infrastructure/postgres/init_openmetadata_db.sql:/docker-entrypoint-initdb.d/05_init_openmetadata_db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-airflow}"]
       interval: 10s
@@ -199,6 +203,147 @@ services:
       timeout: 10s
       retries: 5
 
+  # -- OpenMetadata (Data Catalog & Governance) --
+  openmetadata-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -E '(green|yellow)'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  openmetadata-server:
+    image: openmetadata/server:1.3.1
+    environment:
+      # Database configuration (uses existing PostgreSQL)
+      DB_DRIVER_CLASS: org.postgresql.Driver
+      DB_SCHEME: postgresql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-airflow}
+      DB_USER_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+      OM_DATABASE: openmetadata_db
+      # Elasticsearch configuration
+      ELASTICSEARCH_HOST: openmetadata-elasticsearch
+      ELASTICSEARCH_PORT: "9200"
+      ELASTICSEARCH_SCHEME: http
+      # Server configuration
+      SERVER_HOST: openmetadata-server
+      SERVER_PORT: "8585"
+      SERVER_ADMIN_PORT: "8586"
+      # Authentication (basic auth for development)
+      AUTHENTICATION_PROVIDER: basic
+      AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
+      AUTHENTICATION_AUTHORITY: "http://localhost:8585/api/v1/system/config/authorizer"
+      AUTHENTICATION_CLIENT_ID: open-metadata
+      AUTHENTICATION_CALLBACK_URL: "http://localhost:8585/callback"
+      # Airflow integration
+      PIPELINE_SERVICE_CLIENT_ENABLED: "true"
+      PIPELINE_SERVICE_CLIENT_HOST: http://airflow-webserver:8080
+      PIPELINE_SERVICE_CLIENT_CLASS_NAME: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+      PIPELINE_SERVICE_IP_INFO_ENABLED: "false"
+      AIRFLOW_USERNAME: ${AIRFLOW_ADMIN_USER:-admin}
+      AIRFLOW_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+      # JWT configuration
+      RSA_PUBLIC_KEY_FILE_PATH: ""
+      RSA_PRIVATE_KEY_FILE_PATH: ""
+      JWT_ISSUER: open-metadata.org
+      JWT_KEY_ID: Gb389a-9f76-gdjs-a92j-0242ac120002
+      # Authorizer configuration
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+    ports:
+      - "${OPENMETADATA_PORT:-8585}:8585"
+      - "${OPENMETADATA_ADMIN_PORT:-8586}:8586"
+    volumes:
+      - ./infrastructure/openmetadata/ingestion:/opt/openmetadata/ingestion
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openmetadata-elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8585/api/v1/system/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  openmetadata-ingestion:
+    image: openmetadata/ingestion:1.3.1
+    environment:
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      # OpenMetadata connection
+      OPENMETADATA_SERVER_HOST: openmetadata-server
+      OPENMETADATA_SERVER_PORT: "8585"
+      # Authentication for ingestion (aligned with server's basic auth)
+      # Use 'no-auth' for local development, 'basic' for production
+      OPENMETADATA_AUTH_PROVIDER: ${OPENMETADATA_AUTH_PROVIDER:-basic}
+      OPENMETADATA_USERNAME: ${OPENMETADATA_USERNAME:-admin}
+      OPENMETADATA_PASSWORD: ${OPENMETADATA_PASSWORD:-admin}
+      # JWT token for API authentication (generate from OpenMetadata UI or API)
+      OPENMETADATA_JWT_TOKEN: ${OPENMETADATA_JWT_TOKEN:-}
+      # Database connections for ingestion
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-airflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-airflow}
+      POSTGRES_DB: ${POSTGRES_DB:-airflow}
+      # MinIO connection
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio123}
+      # Ingestion schedule (cron format, default: every 6 hours)
+      INGESTION_CRON_SCHEDULE: ${INGESTION_CRON_SCHEDULE:-0 */6 * * *}
+    volumes:
+      - ./infrastructure/openmetadata/ingestion:/opt/airflow/dags
+      - ./transformations:/opt/airflow/transformations
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        chmod +x /opt/airflow/dags/run_ingestion.sh
+        /opt/airflow/dags/run_ingestion.sh
+    depends_on:
+      openmetadata-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # RBAC Initialization (one-shot service)
+  openmetadata-rbac-init:
+    image: python:3.11-slim
+    environment:
+      OPENMETADATA_SERVER: http://openmetadata-server:8585
+      RBAC_CONFIG: /opt/openmetadata/rbac/roles_config.yaml
+      # JWT token for admin operations (preferred)
+      OPENMETADATA_JWT_TOKEN: ${OPENMETADATA_JWT_TOKEN:-}
+      # Basic auth credentials (fallback when JWT token is not provided)
+      OPENMETADATA_USERNAME: ${OPENMETADATA_USERNAME:-admin}
+      OPENMETADATA_PASSWORD: ${OPENMETADATA_PASSWORD:-admin}
+    volumes:
+      - ./infrastructure/openmetadata/rbac:/opt/openmetadata/rbac
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        pip install -q requests pyyaml
+        chmod +x /opt/openmetadata/rbac/run_rbac_init.sh
+        /opt/openmetadata/rbac/run_rbac_init.sh
+    depends_on:
+      openmetadata-server:
+        condition: service_healthy
+    restart: "no"
+
 volumes:
   postgres-data:
   minio-data:
+  elasticsearch-data:

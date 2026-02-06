@@ -1,0 +1,50 @@
+# OpenMetadata MinIO (S3-compatible) Metadata Ingestion Configuration
+# Ingests metadata from MinIO object storage (medallion architecture buckets)
+
+source:
+  type: S3
+  serviceName: data-lake-minio
+  serviceConnection:
+    config:
+      type: S3
+      awsConfig:
+        awsAccessKeyId: ${MINIO_ACCESS_KEY}
+        awsSecretAccessKey: ${MINIO_SECRET_KEY}
+        awsRegion: us-east-1
+        endPointURL: http://minio:9000
+      # Connection pool settings
+      connectionTimeout: 30
+      readTimeout: 30
+  sourceConfig:
+    config:
+      type: StorageMetadata
+      # Container (bucket) filter patterns
+      containerFilterPattern:
+        includes:
+          - raw        # Bronze layer
+          - staging    # Silver layer
+          - curated    # Gold layer
+        excludes:
+          - ".*-temp"
+          - ".*-backup"
+      # Include structural metadata
+      storageMetadataConfigSource:
+        prefixConfig:
+          containerName: raw
+          objectPrefix: ""
+        # Manifest file for structured metadata
+        # manifestFilePath: s3://raw/manifest.json
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    # Authentication: use 'no-auth' for local development, 'basic' for production
+    authProvider: ${OPENMETADATA_AUTH_PROVIDER:-basic}
+    # Security config with JWT token (used when authProvider is 'basic')
+    securityConfig:
+      jwtToken: ${OPENMETADATA_JWT_TOKEN:-}

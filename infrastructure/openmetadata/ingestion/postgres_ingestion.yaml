@@ -1,0 +1,69 @@
+# OpenMetadata PostgreSQL Metadata Ingestion Configuration
+# Ingests metadata from PostgreSQL data warehouse including all schemas
+
+source:
+  type: Postgres
+  serviceName: data-warehouse-postgres
+  serviceConnection:
+    config:
+      type: Postgres
+      hostPort: postgres:5432
+      username: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      database: ${POSTGRES_DB}
+      # SSL configuration (enable for production)
+      # sslMode: prefer
+      # sslConfig:
+      #   caCertificate: /path/to/ca.crt
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      # Schemas to include in metadata ingestion
+      schemaFilterPattern:
+        includes:
+          - raw
+          - staging
+          - intermediate
+          - marts
+          - reference
+          - governance
+        excludes:
+          - information_schema
+          - pg_catalog
+          - pg_toast
+          - dbt_dev
+          - dbt_prod
+      # Table filter patterns
+      tableFilterPattern:
+        includes:
+          - ".*"
+        excludes:
+          - "^_.*"  # Exclude internal tables starting with underscore
+      # Include views in metadata
+      includeViews: true
+      # Include stored procedures
+      includeProcedures: true
+      # Mark PII columns based on naming patterns
+      markDeletedTables: true
+      markAllDeletedTables: false
+      # Usage and lineage
+      useFqnForFiltering: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  # Log level for ingestion
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    # Authentication: use 'no-auth' for local development, 'basic' for production
+    authProvider: ${OPENMETADATA_AUTH_PROVIDER:-basic}
+    # Basic auth credentials (used when authProvider is 'basic')
+    securityConfig:
+      jwtToken: ${OPENMETADATA_JWT_TOKEN:-}
+
+# Scheduling configuration (when run via Airflow)
+# schedule:
+#   cron: "0 */6 * * *"  # Every 6 hours

@@ -1,0 +1,134 @@
+# OpenMetadata Lineage Ingestion Configuration
+# Connects data sources to marts through transformation lineage
+
+source:
+  type: Lineage
+  serviceName: data-platform-lineage
+  serviceConnection:
+    config:
+      type: CustomLineage
+  sourceConfig:
+    config:
+      type: Lineage
+      # Query log lineage from PostgreSQL
+      queryLogDuration: 7  # Days to look back
+      # Parse SQL for lineage extraction
+      parserTimeout: 300
+      resultLimit: 10000
+      # Schema-level lineage configuration
+      schemaFilterPattern:
+        includes:
+          - raw
+          - staging
+          - intermediate
+          - marts
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    # Authentication: use 'no-auth' for local development, 'basic' for production
+    authProvider: ${OPENMETADATA_AUTH_PROVIDER:-basic}
+    # Security config with JWT token (used when authProvider is 'basic')
+    securityConfig:
+      jwtToken: ${OPENMETADATA_JWT_TOKEN:-}
+
+---
+# Manual Lineage Definitions for Data Platform
+# These define the medallion architecture flow
+
+lineage:
+  # Bronze to Staging transformations
+  - from:
+      type: container
+      fqn: data-lake-minio.raw
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.raw.transactions
+    description: "Raw parquet files loaded to PostgreSQL raw schema"
+    pipeline: sample_batch_ingestion
+
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.raw.transactions
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.staging.stg_transactions
+    description: "dbt staging transformation - cleaning and standardization"
+    pipeline: dbt_transform
+
+  # Staging to Intermediate transformations
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.staging.stg_transactions
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.intermediate.int_daily_transactions
+    description: "dbt intermediate - daily aggregations"
+    pipeline: dbt_transform
+
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.staging.stg_transactions
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.intermediate.int_transactions_enriched
+    description: "dbt intermediate - enriched transactions"
+    pipeline: dbt_transform
+
+  # Intermediate to Marts transformations
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.intermediate.int_daily_transactions
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.marts.mart_customer_analytics
+    description: "dbt marts - customer analytics"
+    pipeline: dbt_transform
+
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.intermediate.int_daily_transactions
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.marts.mart_product_analytics
+    description: "dbt marts - product analytics"
+    pipeline: dbt_transform
+
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.intermediate.int_daily_transactions
+    to:
+      type: table
+      fqn: data-warehouse-postgres.airflow.marts.mart_daily_summary
+    description: "dbt marts - daily summary"
+    pipeline: dbt_transform
+
+  # Marts to Superset dashboards
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.marts.mart_customer_analytics
+    to:
+      type: dashboard
+      fqn: superset.customer_insights_dashboard
+    description: "Customer analytics mart feeds Customer Insights dashboard"
+
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.marts.mart_product_analytics
+    to:
+      type: dashboard
+      fqn: superset.product_performance_dashboard
+    description: "Product analytics mart feeds Product Performance dashboard"
+
+  - from:
+      type: table
+      fqn: data-warehouse-postgres.airflow.marts.mart_daily_summary
+    to:
+      type: dashboard
+      fqn: superset.daily_operations_dashboard
+    description: "Daily summary mart feeds Daily Operations dashboard"

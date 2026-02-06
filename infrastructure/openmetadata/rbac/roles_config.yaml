@@ -1,0 +1,443 @@
+# OpenMetadata Role-Based Access Control Configuration
+# Defines roles, policies, and permissions for data governance
+
+# =============================================================================
+# ROLES DEFINITION
+# =============================================================================
+# Roles define a set of permissions that can be assigned to users or teams
+
+roles:
+  # Data Platform Administrator - Full access to all resources
+  - name: DataPlatformAdmin
+    description: "Full administrative access to the data platform"
+    policies:
+      - DataPlatformAdminPolicy
+
+  # Data Engineer - Can manage pipelines, ingestion, and technical metadata
+  - name: DataEngineer
+    description: "Technical role for managing data pipelines and infrastructure"
+    policies:
+      - DataEngineerPolicy
+      - PipelineManagementPolicy
+
+  # Data Analyst - Can view and analyze data, create documentation
+  - name: DataAnalyst
+    description: "Analytical role for viewing data and creating insights"
+    policies:
+      - DataAnalystPolicy
+      - DataDocumentationPolicy
+
+  # Data Steward - Can manage metadata, ownership, and governance rules
+  - name: DataSteward
+    description: "Governance role for managing data quality and metadata"
+    policies:
+      - DataStewardPolicy
+      - GovernancePolicy
+
+  # Data Consumer - Read-only access to data catalog
+  - name: DataConsumer
+    description: "Read-only access to browse the data catalog"
+    policies:
+      - DataConsumerPolicy
+
+  # Data Owner - Full control over owned datasets
+  - name: DataOwner
+    description: "Full control over datasets assigned as owner"
+    policies:
+      - DataOwnerPolicy
+
+# =============================================================================
+# POLICIES DEFINITION
+# =============================================================================
+# Policies define specific permissions for resources
+
+policies:
+  # Admin Policy - Full access
+  - name: DataPlatformAdminPolicy
+    description: "Full administrative access to all resources"
+    rules:
+      - name: AdminAllAccess
+        resources:
+          - all
+        operations:
+          - All
+        effect: allow
+
+  # Data Engineer Policy
+  - name: DataEngineerPolicy
+    description: "Access for data engineering tasks"
+    rules:
+      - name: ViewAllData
+        resources:
+          - table
+          - database
+          - databaseSchema
+          - dashboard
+          - pipeline
+          - mlmodel
+          - container
+        operations:
+          - ViewAll
+          - ViewBasic
+          - ViewUsage
+          - ViewTests
+          - ViewQueries
+          - ViewDataProfile
+          - ViewSampleData
+        effect: allow
+      - name: ManageIngestion
+        resources:
+          - ingestionPipeline
+        operations:
+          - Create
+          - Delete
+          - ViewAll
+          - EditAll
+        effect: allow
+      - name: EditTechnicalMetadata
+        resources:
+          - table
+          - database
+          - databaseSchema
+        operations:
+          - EditDescription
+          - EditTags
+          - EditLineage
+          - EditCustomFields
+        effect: allow
+
+  # Pipeline Management Policy
+  - name: PipelineManagementPolicy
+    description: "Permissions for managing data pipelines"
+    rules:
+      - name: ManagePipelines
+        resources:
+          - pipeline
+          - ingestionPipeline
+        operations:
+          - Create
+          - Delete
+          - ViewAll
+          - EditAll
+        effect: allow
+
+  # Data Analyst Policy
+  - name: DataAnalystPolicy
+    description: "Read access for data analysis"
+    rules:
+      - name: ViewDataAssets
+        resources:
+          - table
+          - database
+          - databaseSchema
+          - dashboard
+          - chart
+          - query
+        operations:
+          - ViewAll
+          - ViewBasic
+          - ViewUsage
+          - ViewTests
+          - ViewDataProfile
+          - ViewSampleData
+          - ViewQueries
+        effect: allow
+      - name: CreateQueries
+        resources:
+          - query
+        operations:
+          - Create
+          - EditAll
+          - Delete
+        effect: allow
+
+  # Data Documentation Policy
+  - name: DataDocumentationPolicy
+    description: "Permissions to create and edit documentation"
+    rules:
+      - name: EditDocumentation
+        resources:
+          - table
+          - database
+          - databaseSchema
+          - dashboard
+          - glossaryTerm
+        operations:
+          - EditDescription
+          - EditTags
+        effect: allow
+
+  # Data Steward Policy
+  - name: DataStewardPolicy
+    description: "Governance and metadata management permissions"
+    rules:
+      - name: ManageMetadata
+        resources:
+          - table
+          - database
+          - databaseSchema
+          - dashboard
+          - pipeline
+        operations:
+          - ViewAll
+          - EditAll
+          - EditOwner
+          - EditDescription
+          - EditTags
+          - EditLineage
+          - EditCustomFields
+        effect: allow
+      - name: ManageGlossary
+        resources:
+          - glossary
+          - glossaryTerm
+        operations:
+          - Create
+          - Delete
+          - ViewAll
+          - EditAll
+        effect: allow
+      - name: ManageClassification
+        resources:
+          - classification
+          - tag
+        operations:
+          - Create
+          - Delete
+          - ViewAll
+          - EditAll
+        effect: allow
+
+  # Governance Policy
+  - name: GovernancePolicy
+    description: "Data governance administrative permissions"
+    rules:
+      - name: ManageDataQuality
+        resources:
+          - testSuite
+          - testCase
+          - testDefinition
+        operations:
+          - Create
+          - Delete
+          - ViewAll
+          - EditAll
+        effect: allow
+      - name: ManageOwnership
+        resources:
+          - table
+          - database
+          - dashboard
+        operations:
+          - EditOwner
+        effect: allow
+
+  # Data Consumer Policy
+  - name: DataConsumerPolicy
+    description: "Read-only access to data catalog"
+    rules:
+      - name: ViewCatalog
+        resources:
+          - table
+          - database
+          - databaseSchema
+          - dashboard
+          - glossary
+          - glossaryTerm
+        operations:
+          - ViewBasic
+          - ViewUsage
+        effect: allow
+      - name: ViewLineage
+        resources:
+          - table
+          - dashboard
+          - pipeline
+        operations:
+          - ViewAll
+        effect: allow
+
+  # Data Owner Policy
+  - name: DataOwnerPolicy
+    description: "Full control over owned assets"
+    rules:
+      - name: ManageOwnedAssets
+        resources:
+          - table
+          - database
+          - databaseSchema
+          - dashboard
+        operations:
+          - ViewAll
+          - EditAll
+          - EditOwner
+          - Delete
+        effect: allow
+        condition:
+          isOwner: true
+
+# =============================================================================
+# TEAMS DEFINITION
+# =============================================================================
+# Teams organize users and can have roles assigned
+
+teams:
+  # Platform Team - Manages infrastructure
+  - name: PlatformTeam
+    displayName: "Data Platform Team"
+    description: "Team responsible for data platform infrastructure and operations"
+    teamType: Department
+    defaultRoles:
+      - DataPlatformAdmin
+    children:
+      - DataEngineering
+      - DataOps
+
+  # Data Engineering Team
+  - name: DataEngineering
+    displayName: "Data Engineering"
+    description: "Team responsible for data pipelines and transformations"
+    teamType: Group
+    defaultRoles:
+      - DataEngineer
+    parent: PlatformTeam
+
+  # Data Ops Team
+  - name: DataOps
+    displayName: "Data Operations"
+    description: "Team responsible for data platform operations and monitoring"
+    teamType: Group
+    defaultRoles:
+      - DataEngineer
+    parent: PlatformTeam
+
+  # Analytics Team
+  - name: AnalyticsTeam
+    displayName: "Analytics Team"
+    description: "Team responsible for data analysis and insights"
+    teamType: Department
+    defaultRoles:
+      - DataAnalyst
+    children:
+      - BusinessAnalytics
+      - DataScience
+
+  # Business Analytics Team
+  - name: BusinessAnalytics
+    displayName: "Business Analytics"
+    description: "Team focused on business intelligence and reporting"
+    teamType: Group
+    defaultRoles:
+      - DataAnalyst
+    parent: AnalyticsTeam
+
+  # Data Science Team
+  - name: DataScience
+    displayName: "Data Science"
+    description: "Team focused on machine learning and advanced analytics"
+    teamType: Group
+    defaultRoles:
+      - DataAnalyst
+    parent: AnalyticsTeam
+
+  # Governance Team
+  - name: GovernanceTeam
+    displayName: "Data Governance Team"
+    description: "Team responsible for data governance and quality"
+    teamType: Department
+    defaultRoles:
+      - DataSteward
+    children:
+      - DataQuality
+      - DataCatalog
+
+  # Data Quality Team
+  - name: DataQuality
+    displayName: "Data Quality"
+    description: "Team focused on data quality management"
+    teamType: Group
+    defaultRoles:
+      - DataSteward
+    parent: GovernanceTeam
+
+  # Data Catalog Team
+  - name: DataCatalog
+    displayName: "Data Catalog"
+    description: "Team focused on metadata management and cataloging"
+    teamType: Group
+    defaultRoles:
+      - DataSteward
+    parent: GovernanceTeam
+
+# =============================================================================
+# DATA CLASSIFICATION TAGS
+# =============================================================================
+# Tags for classifying data sensitivity and access levels
+
+classifications:
+  # Data Sensitivity Classification
+  - name: DataSensitivity
+    description: "Classification for data sensitivity levels"
+    tags:
+      - name: Public
+        description: "Data that can be freely shared externally"
+      - name: Internal
+        description: "Data for internal use only"
+      - name: Confidential
+        description: "Sensitive business data with restricted access"
+      - name: Restricted
+        description: "Highly sensitive data requiring special handling"
+
+  # PII Classification
+  - name: PII
+    description: "Personally Identifiable Information classification"
+    tags:
+      - name: Contains-PII
+        description: "Data contains personally identifiable information"
+      - name: PII-Encrypted
+        description: "PII data that is encrypted at rest"
+      - name: PII-Masked
+        description: "PII data that is masked or anonymized"
+      - name: No-PII
+        description: "Data does not contain PII"
+
+  # Data Domain Classification
+  - name: DataDomain
+    description: "Business domain classification"
+    tags:
+      - name: Customer
+        description: "Customer-related data"
+      - name: Product
+        description: "Product-related data"
+      - name: Transaction
+        description: "Transaction and order data"
+      - name: Financial
+        description: "Financial and accounting data"
+      - name: Operations
+        description: "Operational and logistics data"
+      - name: Marketing
+        description: "Marketing and campaign data"
+
+  # Data Layer Classification
+  - name: DataLayer
+    description: "Medallion architecture layer classification"
+    tags:
+      - name: Bronze
+        description: "Raw ingested data"
+      - name: Silver
+        description: "Cleaned and validated data"
+      - name: Gold
+        description: "Business-ready aggregated data"
+
+  # Data Quality Classification
+  - name: DataQuality
+    description: "Data quality tier classification"
+    tags:
+      - name: Certified
+        description: "Data has been certified for production use"
+      - name: Validated
+        description: "Data has passed quality checks"
+      - name: Draft
+        description: "Data is in draft/development state"
+      - name: Deprecated
+        description: "Data is deprecated and should not be used"

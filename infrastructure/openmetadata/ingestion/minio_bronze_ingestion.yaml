@@ -1,0 +1,39 @@
+# OpenMetadata MinIO Bronze Layer (Raw Data) Metadata Ingestion Configuration
+# Ingests metadata specifically from the raw bucket with additional settings
+
+source:
+  type: S3
+  serviceName: data-lake-minio-bronze
+  serviceConnection:
+    config:
+      type: S3
+      awsConfig:
+        awsAccessKeyId: ${MINIO_ACCESS_KEY}
+        awsSecretAccessKey: ${MINIO_SECRET_KEY}
+        awsRegion: us-east-1
+        endPointURL: http://minio:9000
+      # Connection pool settings
+      connectionTimeout: 30
+      readTimeout: 30
+  sourceConfig:
+    config:
+      type: StorageMetadata
+      containerFilterPattern:
+        includes:
+          - raw  # Bronze layer only
+      # Mark deleted containers for cleanup tracking
+      markDeletedContainers: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: http://openmetadata-server:8585/api
+    # Authentication: use 'no-auth' for local development, 'basic' for production
+    authProvider: ${OPENMETADATA_AUTH_PROVIDER:-basic}
+    # Security config with JWT token (used when authProvider is 'basic')
+    securityConfig:
+      jwtToken: ${OPENMETADATA_JWT_TOKEN:-}
