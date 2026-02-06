@@ -9,9 +9,11 @@ import sys
 
 import pytest
 
-# Add the dags directory to the path so Airflow can find them
+# Add the dags directory and pipelines directory to the path
 DAGS_DIR = os.path.join(os.path.dirname(__file__), "..", "dags")
+PIPELINES_DIR = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, DAGS_DIR)
+sys.path.insert(0, PIPELINES_DIR)
 
 
 @pytest.fixture
@@ -71,7 +73,9 @@ class TestExampleDags:
         if dag is None:
             pytest.skip("example_hello_world DAG not found")
 
-        assert dag.schedule_interval is None
+        # In Airflow 3.x, use dag.schedule instead of schedule_interval
+        schedule = getattr(dag, 'schedule', None)
+        assert schedule is None
         assert "example" in dag.tags
 
     def test_monitoring_dag_schedule(self, dagbag):

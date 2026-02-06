@@ -7,9 +7,8 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 
-from airflow.hooks.base import BaseHook
+from airflow.sdk.bases.hook import BaseHook
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.decorators import apply_defaults
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +27,6 @@ class MinIOFileSensorOperator(BaseSensorOperator):
 
     template_fields = ("bucket_name", "prefix")
 
-    @apply_defaults
     def __init__(
         self,
         bucket_name: str,

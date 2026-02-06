@@ -6,9 +6,8 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
-from airflow.hooks.base import BaseHook
 from airflow.models import BaseOperator
-from airflow.utils.decorators import apply_defaults
+from airflow.sdk.bases.hook import BaseHook
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +25,6 @@ class MinIOUploadOperator(BaseOperator):
 
     template_fields = ("bucket_name", "object_name", "file_path")
 
-    @apply_defaults
     def __init__(
         self,
         bucket_name: str,

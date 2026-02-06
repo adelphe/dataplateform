@@ -11,7 +11,7 @@ class TestMinIOUploadOperator:
     """Tests for the MinIOUploadOperator."""
 
     def _make_operator(self, **kwargs):
-        from operators.minio_operator import MinIOUploadOperator
+        from pipelines.operators.minio_operator import MinIOUploadOperator
 
         defaults = {
             "task_id": "test_upload",
@@ -22,10 +22,18 @@ class TestMinIOUploadOperator:
         defaults.update(kwargs)
         return MinIOUploadOperator(**defaults)
 
-    @patch("operators.minio_operator.boto3")
+    @patch("pipelines.operators.minio_operator.BaseHook.get_connection")
+    @patch("pipelines.operators.minio_operator.boto3")
     @patch("os.path.isfile", return_value=True)
-    def test_execute_uploads_file(self, mock_isfile, mock_boto3, mock_airflow_context, minio_env):
+    def test_execute_uploads_file(self, mock_isfile, mock_boto3, mock_get_conn, mock_airflow_context, minio_env):
         """Verify file upload to MinIO succeeds."""
+        # Mock the Airflow connection
+        mock_conn = MagicMock()
+        mock_conn.login = "test-key"
+        mock_conn.password = "test-secret"
+        mock_conn.extra_dejson = {"endpoint_url": "http://localhost:9000"}
+        mock_get_conn.return_value = mock_conn
+
         client = MagicMock()
         mock_boto3.client.return_value = client
         client.head_bucket.return_value = {}
@@ -36,10 +44,18 @@ class TestMinIOUploadOperator:
         assert result == "test/file.csv"
         client.upload_file.assert_called_once()
 
-    @patch("operators.minio_operator.boto3")
+    @patch("pipelines.operators.minio_operator.BaseHook.get_connection")
+    @patch("pipelines.operators.minio_operator.boto3")
     @patch("os.path.isfile", return_value=True)
-    def test_creates_bucket_if_missing(self, mock_isfile, mock_boto3, mock_airflow_context, minio_env):
+    def test_creates_bucket_if_missing(self, mock_isfile, mock_boto3, mock_get_conn, mock_airflow_context, minio_env):
         """Verify bucket creation when it doesn't exist."""
+        # Mock the Airflow connection
+        mock_conn = MagicMock()
+        mock_conn.login = "test-key"
+        mock_conn.password = "test-secret"
+        mock_conn.extra_dejson = {"endpoint_url": "http://localhost:9000"}
+        mock_get_conn.return_value = mock_conn
+
         client = MagicMock()
         mock_boto3.client.return_value = client
         error_response = {"Error": {"Code": "404", "Message": "Not Found"}}
@@ -58,12 +74,20 @@ class TestMinIOUploadOperator:
         with pytest.raises(FileNotFoundError):
             op.execute(mock_airflow_context)
 
-    @patch("operators.minio_operator.boto3")
+    @patch("pipelines.operators.minio_operator.BaseHook.get_connection")
+    @patch("pipelines.operators.minio_operator.boto3")
     @patch("os.path.isfile", return_value=True)
     def test_skip_upload_when_replace_false_and_exists(
-        self, mock_isfile, mock_boto3, mock_airflow_context, minio_env
+        self, mock_isfile, mock_boto3, mock_get_conn, mock_airflow_context, minio_env
     ):
         """Verify upload is skipped when replace=False and object exists."""
+        # Mock the Airflow connection
+        mock_conn = MagicMock()
+        mock_conn.login = "test-key"
+        mock_conn.password = "test-secret"
+        mock_conn.extra_dejson = {"endpoint_url": "http://localhost:9000"}
+        mock_get_conn.return_value = mock_conn
+
         client = MagicMock()
         mock_boto3.client.return_value = client
         client.head_bucket.return_value = {}
@@ -80,7 +104,7 @@ class TestDataQualityCheckOperator:
     """Tests for the DataQualityCheckOperator."""
 
     def _make_operator(self, **kwargs):
-        from operators.data_quality_operator import DataQualityCheckOperator
+        from pipelines.operators.data_quality_operator import DataQualityCheckOperator
 
         defaults = {
             "task_id": "test_quality",
@@ -95,7 +119,7 @@ class TestDataQualityCheckOperator:
         defaults.update(kwargs)
         return DataQualityCheckOperator(**defaults)
 
-    @patch("operators.data_quality_operator.PostgresHook")
+    @patch("pipelines.operators.data_quality_operator.PostgresHook")
     def test_passes_when_above_threshold(self, mock_hook_cls, mock_airflow_context):
         """Verify check passes when value meets threshold."""
         hook = MagicMock()
@@ -105,7 +129,7 @@ class TestDataQualityCheckOperator:
         op = self._make_operator()
         op.execute(mock_airflow_context)
 
-    @patch("operators.data_quality_operator.PostgresHook")
+    @patch("pipelines.operators.data_quality_operator.PostgresHook")
     def test_fails_when_below_threshold(self, mock_hook_cls, mock_airflow_context):
         """Verify AirflowException when value is below threshold."""
         from airflow.exceptions import AirflowException
@@ -118,7 +142,7 @@ class TestDataQualityCheckOperator:
         with pytest.raises(AirflowException, match="below minimum threshold"):
             op.execute(mock_airflow_context)
 
-    @patch("operators.data_quality_operator.PostgresHook")
+    @patch("pipelines.operators.data_quality_operator.PostgresHook")
     def test_fails_when_above_max_threshold(self, mock_hook_cls, mock_airflow_context):
         """Verify AirflowException when value exceeds max threshold."""
         from airflow.exceptions import AirflowException
@@ -144,7 +168,7 @@ class TestPostgresTableSensorOperator:
     """Tests for the PostgresTableSensorOperator."""
 
     def _make_operator(self, **kwargs):
-        from operators.postgres_operator import PostgresTableSensorOperator
+        from pipelines.operators.postgres_operator import PostgresTableSensorOperator
 
         defaults = {
             "task_id": "test_sensor",
@@ -153,7 +177,7 @@ class TestPostgresTableSensorOperator:
         defaults.update(kwargs)
         return PostgresTableSensorOperator(**defaults)
 
-    @patch("operators.postgres_operator.PostgresHook")
+    @patch("pipelines.operators.postgres_operator.PostgresHook")
     def test_poke_returns_true_when_table_exists(self, mock_hook_cls, mock_airflow_context):
         """Verify sensor returns True when table exists."""
         hook = MagicMock()
@@ -163,7 +187,7 @@ class TestPostgresTableSensorOperator:
         op = self._make_operator()
         assert op.poke(mock_airflow_context) is True
 
-    @patch("operators.postgres_operator.PostgresHook")
+    @patch("pipelines.operators.postgres_operator.PostgresHook")
     def test_poke_returns_false_when_table_missing(self, mock_hook_cls, mock_airflow_context):
         """Verify sensor returns False when table doesn't exist."""
         hook = MagicMock()
@@ -173,7 +197,7 @@ class TestPostgresTableSensorOperator:
         op = self._make_operator()
         assert op.poke(mock_airflow_context) is False
 
-    @patch("operators.postgres_operator.PostgresHook")
+    @patch("pipelines.operators.postgres_operator.PostgresHook")
     def test_poke_checks_row_count(self, mock_hook_cls, mock_airflow_context):
         """Verify sensor checks minimum row count when specified."""
         hook = MagicMock()
@@ -188,7 +212,7 @@ class TestMinIOFileSensorOperator:
     """Tests for the MinIOFileSensorOperator."""
 
     def _make_operator(self, **kwargs):
-        from operators.file_sensor_operator import MinIOFileSensorOperator
+        from pipelines.operators.file_sensor_operator import MinIOFileSensorOperator
 
         defaults = {
             "task_id": "test_file_sensor",
@@ -198,7 +222,7 @@ class TestMinIOFileSensorOperator:
         defaults.update(kwargs)
         return MinIOFileSensorOperator(**defaults)
 
-    @patch("operators.file_sensor_operator.boto3")
+    @patch("pipelines.operators.file_sensor_operator.boto3")
     def test_poke_returns_true_when_file_exists(self, mock_boto3, mock_airflow_context, minio_env):
         """Verify sensor returns True when file exists."""
         client = MagicMock()
@@ -210,7 +234,7 @@ class TestMinIOFileSensorOperator:
         op = self._make_operator()
         assert op.poke(mock_airflow_context) is True
 
-    @patch("operators.file_sensor_operator.boto3")
+    @patch("pipelines.operators.file_sensor_operator.boto3")
     def test_poke_returns_false_when_no_files(self, mock_boto3, mock_airflow_context, minio_env):
         """Verify sensor returns False when no files match."""
         client = MagicMock()
@@ -220,7 +244,7 @@ class TestMinIOFileSensorOperator:
         op = self._make_operator()
         assert op.poke(mock_airflow_context) is False
 
-    @patch("operators.file_sensor_operator.boto3")
+    @patch("pipelines.operators.file_sensor_operator.boto3")
     def test_wildcard_match(self, mock_boto3, mock_airflow_context, minio_env):
         """Verify wildcard pattern matching works."""
         client = MagicMock()

@@ -233,10 +233,10 @@ class TestHealthScoreLogic(unittest.TestCase):
 class TestMonitoringOperators(unittest.TestCase):
     """Tests for monitoring operator classes."""
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_data_freshness_operator_fresh(self, mock_hook):
         """Test DataFreshnessCheckOperator with fresh data."""
-        from operators.monitoring_operator import DataFreshnessCheckOperator
+        from pipelines.operators.monitoring_operator import DataFreshnessCheckOperator
 
         # Setup mock
         mock_conn = MagicMock()
@@ -258,10 +258,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertTrue(result["is_fresh"])
         self.assertEqual(result["source_name"], "test_source")
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_data_freshness_operator_stale(self, mock_hook):
         """Test DataFreshnessCheckOperator with stale data (alert disabled)."""
-        from operators.monitoring_operator import DataFreshnessCheckOperator
+        from pipelines.operators.monitoring_operator import DataFreshnessCheckOperator
 
         # Setup mock with stale data (30 hours old)
         mock_conn = MagicMock()
@@ -284,10 +284,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["source_name"], "stale_source")
         self.assertGreater(result["staleness_hours"], 24)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_data_freshness_operator_no_data(self, mock_hook):
         """Test DataFreshnessCheckOperator when no data exists."""
-        from operators.monitoring_operator import DataFreshnessCheckOperator
+        from pipelines.operators.monitoring_operator import DataFreshnessCheckOperator
 
         # Setup mock with no data
         mock_conn = MagicMock()
@@ -310,10 +310,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertIsNone(result["last_update"])
         self.assertIsNone(result["staleness_hours"])
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_data_freshness_operator_with_layer(self, mock_hook):
         """Test DataFreshnessCheckOperator stores correct layer."""
-        from operators.monitoring_operator import DataFreshnessCheckOperator
+        from pipelines.operators.monitoring_operator import DataFreshnessCheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -336,10 +336,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["layer"], "staging")
         self.assertEqual(result["threshold_hours"], 12)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_sla_check_operator(self, mock_hook):
         """Test SLACheckOperator calculation."""
-        from operators.monitoring_operator import SLACheckOperator
+        from pipelines.operators.monitoring_operator import SLACheckOperator
 
         # Setup mock with sample runs
         mock_conn = MagicMock()
@@ -364,10 +364,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["expected_duration_minutes"], 60)
         self.assertIn("compliance_percent", result)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_sla_check_operator_all_met(self, mock_hook):
         """Test SLACheckOperator when all SLAs are met."""
-        from operators.monitoring_operator import SLACheckOperator
+        from pipelines.operators.monitoring_operator import SLACheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -392,10 +392,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["sla_met"], 3)
         self.assertEqual(result["sla_missed"], 0)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_sla_check_operator_all_missed(self, mock_hook):
         """Test SLACheckOperator when all SLAs are missed."""
-        from operators.monitoring_operator import SLACheckOperator
+        from pipelines.operators.monitoring_operator import SLACheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -419,10 +419,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["sla_met"], 0)
         self.assertEqual(result["sla_missed"], 2)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_sla_check_operator_no_runs(self, mock_hook):
         """Test SLACheckOperator when no runs exist."""
-        from operators.monitoring_operator import SLACheckOperator
+        from pipelines.operators.monitoring_operator import SLACheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -442,10 +442,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["runs_checked"], 0)
         self.assertEqual(result["compliance_percent"], 100.0)  # No runs = 100% compliance
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_sla_check_operator_with_task_id(self, mock_hook):
         """Test SLACheckOperator with specific task_id."""
-        from operators.monitoring_operator import SLACheckOperator
+        from pipelines.operators.monitoring_operator import SLACheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -468,10 +468,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["task_id"], "specific_task")
         self.assertEqual(result["compliance_percent"], 100.0)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_volume_anomaly_operator_normal(self, mock_hook):
         """Test VolumeAnomalyCheckOperator with normal volume."""
-        from operators.monitoring_operator import VolumeAnomalyCheckOperator
+        from pipelines.operators.monitoring_operator import VolumeAnomalyCheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -498,10 +498,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["current_count"], 1050)
         self.assertLess(result["deviation_percent"], 50.0)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_volume_anomaly_operator_high_deviation(self, mock_hook):
         """Test VolumeAnomalyCheckOperator with high deviation."""
-        from operators.monitoring_operator import VolumeAnomalyCheckOperator
+        from pipelines.operators.monitoring_operator import VolumeAnomalyCheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -527,10 +527,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["current_count"], 200)
         self.assertGreater(result["deviation_percent"], 50.0)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_volume_anomaly_operator_zero_rows(self, mock_hook):
         """Test VolumeAnomalyCheckOperator detects zero rows as anomaly."""
-        from operators.monitoring_operator import VolumeAnomalyCheckOperator
+        from pipelines.operators.monitoring_operator import VolumeAnomalyCheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -555,10 +555,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertTrue(result["is_anomaly"])
         self.assertEqual(result["current_count"], 0)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_volume_anomaly_operator_no_history(self, mock_hook):
         """Test VolumeAnomalyCheckOperator with no historical data."""
-        from operators.monitoring_operator import VolumeAnomalyCheckOperator
+        from pipelines.operators.monitoring_operator import VolumeAnomalyCheckOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -584,10 +584,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["current_count"], 500)
         self.assertIsNone(result["deviation_percent"])
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_health_score_operator(self, mock_hook):
         """Test HealthScoreOperator retrieves health metrics."""
-        from operators.monitoring_operator import HealthScoreOperator
+        from pipelines.operators.monitoring_operator import HealthScoreOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
@@ -605,10 +605,10 @@ class TestMonitoringOperators(unittest.TestCase):
         self.assertEqual(result["failed_tasks_24h"], 5)
         self.assertEqual(result["sla_compliance_percent"], 95.5)
 
-    @patch("operators.monitoring_operator.PostgresHook")
+    @patch("pipelines.operators.monitoring_operator.PostgresHook")
     def test_health_score_operator_no_metrics(self, mock_hook):
         """Test HealthScoreOperator when no metrics exist."""
-        from operators.monitoring_operator import HealthScoreOperator
+        from pipelines.operators.monitoring_operator import HealthScoreOperator
 
         mock_conn = MagicMock()
         mock_cursor = MagicMock()

@@ -214,10 +214,12 @@ class TestAlertFormatting(unittest.TestCase):
         mock_ti.dag_id = "test_dag"
         mock_ti.try_number = 2
         mock_ti.log_url = "http://airflow/log"
+        # Properly set up task priority_weight for severity check
+        mock_ti.task.priority_weight = 5  # Below 10, so severity should be HIGH
 
+        # Don't include dag in context so ti.dag_id is used
         context = {
             "task_instance": mock_ti,
-            "dag": MagicMock(dag_id="test_dag"),
             "execution_date": datetime(2024, 1, 15, 10, 30),
             "exception": ValueError("Test error"),
         }
@@ -232,6 +234,7 @@ class TestAlertFormatting(unittest.TestCase):
 
     def test_format_data_quality_alert(self):
         """Test data quality alert formatting."""
+        # 3/10 = 30% failure rate -> HIGH severity (> 0.2)
         validation_results = {
             "dataset_name": "transactions",
             "layer": "staging",
@@ -240,6 +243,7 @@ class TestAlertFormatting(unittest.TestCase):
             "failed_expectations": [
                 {"expectation_type": "expect_column_to_exist", "message": "Column missing"},
                 {"expectation_type": "expect_column_values_to_not_be_null", "message": "Null values found"},
+                {"expectation_type": "expect_column_values_to_be_unique", "message": "Duplicates found"},
             ],
         }
 

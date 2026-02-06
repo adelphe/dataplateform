@@ -6,12 +6,14 @@ from pathlib import Path
 
 import pytest
 
-# Add project root to path
+# Add project root and pipelines to path
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+PIPELINES_DIR = PROJECT_ROOT / "pipelines"
 sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PIPELINES_DIR))
 
 # Set Airflow home for tests
-os.environ.setdefault("AIRFLOW_HOME", str(PROJECT_ROOT / "pipelines"))
+os.environ.setdefault("AIRFLOW_HOME", str(PIPELINES_DIR))
 os.environ.setdefault("AIRFLOW__CORE__LOAD_EXAMPLES", "false")
 
 
@@ -45,8 +47,11 @@ class TestDAGIntegrity:
     def test_no_cycles(self, dag_bag):
         """Test that no DAGs contain cycles."""
         for dag_id, dag in dag_bag.dags.items():
-            cycle = dag.test_cycle()
-            assert not cycle, f"DAG {dag_id} contains a cycle"
+            # topological_sort raises exception if cycle exists
+            try:
+                dag.topological_sort()
+            except Exception as e:
+                pytest.fail(f"DAG {dag_id} contains a cycle: {e}")
 
     def test_dags_have_tags(self, dag_bag):
         """Test that all DAGs have at least one tag."""
@@ -97,9 +102,8 @@ class TestDAGIntegrity:
                 continue
             # Schedule can be None for manually triggered DAGs
             # Just verify it's explicitly set (not implicitly defaulted)
-            assert dag.schedule_interval is not None or dag.timetable is not None, (
-                f"DAG {dag_id} has no schedule defined"
-            )
+            has_schedule = dag.timetable is not None or getattr(dag, 'schedule', None) is not None
+            assert has_schedule, f"DAG {dag_id} has no schedule defined"
 
 
 class TestDAGTasks:
@@ -288,11 +292,12 @@ class TestDAGSchedules:
         for dag_id, dag in dag_bag.dags.items():
             if "health" in dag_id.lower() or "monitor" in dag_id.lower():
                 # Should run at least every hour
-                schedule = dag.schedule_interval
+                schedule = getattr(dag, 'schedule', None)
                 if schedule:
+                    schedule_str = str(schedule)
                     # Check it's not daily/weekly
-                    if schedule in ("@daily", "@weekly", "@monthly"):
+                    if schedule_str in ("@daily", "@weekly", "@monthly"):
                         pytest.fail(
                             f"Monitoring DAG {dag_id} should run more frequently "
-                            f"than {schedule}"
+                            f"than {schedule_str}"
                         )

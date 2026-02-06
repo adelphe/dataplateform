@@ -7,8 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from airflow.models import BaseOperator
-from airflow.hooks.postgres_hook import PostgresHook
-from airflow.utils.decorators import apply_defaults
+from airflow.providers.postgres.hooks.postgres import PostgresHook
 
 
 class DataFreshnessCheckOperator(BaseOperator):
@@ -29,7 +28,6 @@ class DataFreshnessCheckOperator(BaseOperator):
     ui_color = "#4CAF50"
     ui_fgcolor = "#FFFFFF"
 
-    @apply_defaults
     def __init__(
         self,
         source_name: str,
@@ -165,7 +163,6 @@ class SLACheckOperator(BaseOperator):
     ui_color = "#FF9800"
     ui_fgcolor = "#FFFFFF"
 
-    @apply_defaults
     def __init__(
         self,
         target_dag_id: str,
@@ -316,7 +313,6 @@ class VolumeAnomalyCheckOperator(BaseOperator):
     ui_color = "#9C27B0"
     ui_fgcolor = "#FFFFFF"
 
-    @apply_defaults
     def __init__(
         self,
         table_name: str,
@@ -398,9 +394,10 @@ class VolumeAnomalyCheckOperator(BaseOperator):
             "is_anomaly": is_anomaly,
         }
 
+        deviation_str = f"{deviation_percent:.1f}%" if deviation_percent is not None else "N/A"
         self.log.info(
             f"Volume check for {self.schema_name}.{self.table_name}: "
-            f"{current_count} rows, deviation: {deviation_percent:.1f}% "
+            f"{current_count} rows, deviation: {deviation_str} "
             f"({'ANOMALY' if is_anomaly else 'NORMAL'})"
         )
 
@@ -438,7 +435,6 @@ class HealthScoreOperator(BaseOperator):
     ui_color = "#2196F3"
     ui_fgcolor = "#FFFFFF"
 
-    @apply_defaults
     def __init__(
         self,
         postgres_conn_id: str = "postgres_default",

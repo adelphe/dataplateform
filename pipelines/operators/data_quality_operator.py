@@ -6,7 +6,6 @@ from typing import List, Optional
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils.decorators import apply_defaults
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +28,6 @@ class DataQualityCheckOperator(BaseOperator):
 
     template_fields = ("sql_checks",)
 
-    @apply_defaults
     def __init__(
         self,
         sql_checks: List[dict],

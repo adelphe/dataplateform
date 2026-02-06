@@ -4,7 +4,6 @@ import logging
 
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.decorators import apply_defaults
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +20,6 @@ class PostgresTableSensorOperator(BaseSensorOperator):
 
     template_fields = ("table_name", "schema")
 
-    @apply_defaults
     def __init__(
         self,
         table_name: str,

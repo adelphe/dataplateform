@@ -4,7 +4,6 @@ import logging
 import sys
 
 from airflow.models import BaseOperator
-from airflow.utils.decorators import apply_defaults
 
 sys.path.insert(0, "/opt/airflow")
 
@@ -27,7 +26,6 @@ class MinIOToPostgresOperator(BaseOperator):
 
     template_fields = ("bucket", "object_key", "target_table", "target_schema")
 
-    @apply_defaults
     def __init__(
         self,
         bucket: str,

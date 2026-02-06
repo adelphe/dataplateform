@@ -886,7 +886,7 @@ with DAG(
     dag_id="metadata_sync",
     description="Synchronize metadata across data sources for governance",
     default_args=default_args,
-    schedule_interval="0 */6 * * *",  # Every 6 hours
+    schedule="0 */6 * * *",  # Every 6 hours
     start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=["governance", "metadata", "catalog"],
